@@ -42,11 +42,17 @@ The application hosts an instance of the FileSystemRequestHandler class.
 
 CFFileSystemManager
 -------------------
-Application that uses the remote connection to manage the remote file system.
+A WinForms application that uses the remote connection to manage the remote file system.
 
 The application uses the FileSystemConnection (IFileSystem) class to access the remote file system.
 
 The CFFileSystemHandler application can be used for providing the remote file system.
+
+CFFileSystemMobile
+------------------
+A .NET Maui application that allows the file system to be managed remotely.
+
+The application hosts an instance of the FileSystemRequestHandler class.
 
 Security
 --------

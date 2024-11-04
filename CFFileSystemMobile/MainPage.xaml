@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CFFileSystemMobile.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="30,0"
+            Spacing="25">
+            <Image
+                Source="dotnet_bot.png"
+                HeightRequest="185"
+                Aspect="AspectFit"
+                SemanticProperties.Description="dot net bot in a race car number eight" />
+
+            <Label Text="Local IP(s):"/>
+            <Label Text="{Binding LocalIPList, Mode=OneWay}"/>
+
+            <Label Text="Listening port:"/>
+            <Entry
+                x:Name="LocalPortEntry"
+                Text="{Binding LocalPort, Mode=TwoWay}" />
+
+            <Button
+                x:Name="StartListeningBtn"
+                Text="Start Listening"
+                IsEnabled="{Binding StartListeningEnabled}"
+                Command="{Binding StartListeningCommand}"/>
+
+            <Button
+                x:Name="StopListeningBtn"
+                Text="Stop Listening"
+                IsEnabled="{Binding StopListeningEnabled}"
+                Command="{Binding StopListeningCommand}"/>
+
+            <Label
+                x:Name="StatusLabel"
+                Text="{Binding Status}"/>
+
+            <Label
+     x:Name="DebugLabel"
+     Text="{Binding DebugMessage}"/>
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

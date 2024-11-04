@@ -96,6 +96,8 @@ namespace CFFileSystemConnection.Common
             _connection.StopListening();
         }
 
+        public bool IsListening => _connection.IsListening;
+
         /// <summary>
         /// Handles GetFolderRequest message
         /// </summary>

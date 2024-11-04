@@ -7,9 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CFFileSystemConnection.Comm
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CFConnectionMessaging.Common", "..\..\cf-connection-messaging\CFConnectionMessaging.Common\CFConnectionMessaging.Common.csproj", "{DF93D3DF-D72A-457A-98AA-BFCEC7068B1D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CFFileSystemManager", "..\CFFileSystemManager\CFFileSystemManager.csproj", "{0587087E-4F2B-493E-8FAE-09CC57B7FCEE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CFFileSystemManager", "..\CFFileSystemManager\CFFileSystemManager.csproj", "{0587087E-4F2B-493E-8FAE-09CC57B7FCEE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CFFileSystemHandler", "..\CFFileSystemHandler\CFFileSystemHandler.csproj", "{BF053CC6-A499-42C3-AE82-3604133EF278}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CFFileSystemHandler", "..\CFFileSystemHandler\CFFileSystemHandler.csproj", "{BF053CC6-A499-42C3-AE82-3604133EF278}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CFFileSystemMobile", "..\CFFileSystemMobile\CFFileSystemMobile.csproj", "{8C529BB7-5B20-4137-9F74-F70AE9569224}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,12 @@ Global
 		{BF053CC6-A499-42C3-AE82-3604133EF278}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF053CC6-A499-42C3-AE82-3604133EF278}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF053CC6-A499-42C3-AE82-3604133EF278}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C529BB7-5B20-4137-9F74-F70AE9569224}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C529BB7-5B20-4137-9F74-F70AE9569224}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C529BB7-5B20-4137-9F74-F70AE9569224}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{8C529BB7-5B20-4137-9F74-F70AE9569224}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C529BB7-5B20-4137-9F74-F70AE9569224}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C529BB7-5B20-4137-9F74-F70AE9569224}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
