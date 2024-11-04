@@ -2,6 +2,7 @@
 using CFFileSystemConnection.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -120,26 +121,44 @@ namespace CFFileSystemConnection.Common
         {
             if (File.Exists(path))
             {
-                var fileInfo = new FileInfo(path);
+                var fileInfo = new FileInfo(path);                
 
                 var fileObject = new FileObject()
                 {
                     Name = fileInfo.Name,
-                    Length = fileInfo.Length
-                };
+                    Path = fileInfo.FullName,
+                    Length = fileInfo.Length,
+                    CreatedTimeUtc = fileInfo.CreationTimeUtc,
+                    UpdatedTimeUtc = fileInfo.LastWriteTimeUtc,
+                    ReadOnly = fileInfo.IsReadOnly,
+                    Attributes = fileInfo.Attributes.ToString(),
+                    UnixFileMode = fileInfo.UnixFileMode.ToString()                    
+                };                              
 
                 return fileObject;
             }
-
+           
             return null;
         }
 
         private static FolderObject GetFolderInfo(DirectoryInfo directoryInfo)
-        {
+        {            
             return new FolderObject()
             {
-                Name = directoryInfo.Name                
+                Name = directoryInfo.Name,
+                Path = directoryInfo.FullName,
+                UnixFileMode = directoryInfo.UnixFileMode.ToString()
             };
+        }
+
+        public byte[]? GetFileContent(string path)
+        {
+            if (File.Exists(path))
+            {
+                return File.ReadAllBytes(path);
+            }
+
+            return null;
         }
     }
 }

@@ -22,5 +22,12 @@ namespace CFFileSystemConnection.Interfaces
         /// <param name="path">Path to check</param>
         /// <returns></returns>
         FileObject? GetFile(string path);
+
+        /// <summary>
+        /// Gets file content
+        /// </summary>
+        /// <param name="path">Path to check</param>
+        /// <returns></returns>
+        byte[]? GetFileContent(string path);
     }
 }

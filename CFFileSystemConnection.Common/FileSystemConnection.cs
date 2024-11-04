@@ -6,28 +6,28 @@ using CFFileSystemConnection.Exceptions;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CFFileSystemConnection.Common
 {
     /// <summary>
     /// File system via remote UDP connection.
     /// </summary>
-    public class FileSystemConnection : IFileSystem
+    public class FileSystemConnection : IFileSystem, IDisposable
     {
-        private ConnectionUdp _connection;
+        private ConnectionTcp _connection;
         private TimeSpan _responseTimeout = TimeSpan.FromSeconds(30);
-        private EndpointInfo _remoteEndpointInfo;
+        private EndpointInfo? _remoteEndpointInfo;
+
+        private readonly string _securityKey;
 
         // Message converters
         private readonly IExternalMessageConverter<GetFolderRequest> _getFolderRequestConverter = new GetFolderRequestMessageConverter();
         private readonly IExternalMessageConverter<GetFolderResponse> _getFolderResponseConverter = new GetFolderResponseMessageConverter();
+
+        private readonly IExternalMessageConverter<GetFileContentRequest> _getFileContentRequestConverter = new GetFileContentRequestMessageConverter();
+        private readonly IExternalMessageConverter<GetFileContentResponse> _getFileContentResponseConverter = new GetFileContentResponseMessageConverter();
+
         private readonly IExternalMessageConverter<GetFileRequest> _getFileRequestConverter = new GetFileRequestMessageConverter();
         private readonly IExternalMessageConverter<GetFileResponse> _getFileResponseConverter = new GetFileResponseMessageConverter();
 
@@ -36,13 +36,25 @@ namespace CFFileSystemConnection.Common
         /// </summary>
         private List<MessageBase> _responseMessages = new List<MessageBase>();
 
-        public FileSystemConnection()
+        public FileSystemConnection(string securityKey)
         {
-            _connection = new ConnectionUdp();            
+            _securityKey = securityKey;
+
+            _connection = new ConnectionTcp();            
             _connection.OnConnectionMessageReceived += _connection_OnConnectionMessageReceived;
         }
 
-        public EndpointInfo RemoteEndpoint
+        public void Dispose()
+        {
+            if (_connection != null)
+            {
+                _connection.StopListening();
+                _connection.OnConnectionMessageReceived -= _connection_OnConnectionMessageReceived;
+                _connection = null;
+            }
+        }
+
+        public EndpointInfo? RemoteEndpoint
         {
             get { return _remoteEndpointInfo; }
             set { _remoteEndpointInfo = value; }
@@ -68,6 +80,11 @@ namespace CFFileSystemConnection.Common
         {
             switch(connectionMessage.TypeId)
             {
+                case MessageTypeIds.GetFileContentResponse:
+                    var getFileContentResponse = _getFileContentResponseConverter.GetExternalMessage(connectionMessage);
+                    _responseMessages.Add(getFileContentResponse);
+                    break;
+
                 case MessageTypeIds.GetFileResponse:
                     var getFileResponse = _getFileResponseConverter.GetExternalMessage(connectionMessage);
                     _responseMessages.Add(getFileResponse);
@@ -87,6 +104,7 @@ namespace CFFileSystemConnection.Common
             {
                 Id = Guid.NewGuid().ToString(),
                 TypeId = MessageTypeIds.GetFolderRequest,
+                SecurityKey = _securityKey,
                 Path = path,
                 GetFiles = getFiles,
                 RecurseSubFolders = recurseSubFolders
@@ -118,6 +136,7 @@ namespace CFFileSystemConnection.Common
             {
                 Id = Guid.NewGuid().ToString(),
                 TypeId = MessageTypeIds.GetFileRequest,
+                SecurityKey = _securityKey,
                 Path = path
             };
             _connection.SendMessage(_getFileRequestConverter.GetConnectionMessage(getFileRequest), _remoteEndpointInfo);
@@ -139,7 +158,37 @@ namespace CFFileSystemConnection.Common
 
             return null;
         }
-        
+
+        public byte[]? GetFileContent(string path)
+        {
+            // Send GetFileContentRequest message
+            var getFileContentRequest = new GetFileContentRequest()
+            {
+                Id = Guid.NewGuid().ToString(),
+                TypeId = MessageTypeIds.GetFileContentRequest,
+                SecurityKey = _securityKey,
+                Path = path
+            };
+            _connection.SendMessage(_getFileContentRequestConverter.GetConnectionMessage(getFileContentRequest), _remoteEndpointInfo);
+
+            // Wait for response. Should only receive one response
+            var response = WaitForResponses(getFileContentRequest, _responseTimeout, _responseMessages).FirstOrDefault();
+
+            // Process response
+            if (response != null)
+            {
+                var getFileContentResponse = (GetFileContentResponse)response;
+                if (getFileContentResponse.Response.ErrorCode != null)
+                {
+                    throw new FileSystemConnectionException($"Error getting file: {getFileContentResponse.Response.ErrorMessage}")
+                    { ResponseErrorCode = getFileContentResponse.Response.ErrorCode };
+                }
+                return getFileContentResponse.Content;
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Waits for all responses for request until completed or until timeout
         /// </summary>

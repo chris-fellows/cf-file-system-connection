@@ -8,9 +8,10 @@ namespace CFFileSystemConnection.Enums
 {
     public enum ResponseErrorCodes
     {
-        Unknown,
+        Unknown,        
         DirectoryDoesNotExist,
         FileDoesNotExist,
-        FileSystemError
+        FileSystemError,
+        PermissionDenied    // Invalid security key
     }
 }

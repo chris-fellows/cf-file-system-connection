@@ -8,6 +8,9 @@ namespace CFFileSystemConnection.Constants
 {
     internal class MessageTypeIds
     {
+        public const string GetFileContentRequest = "GetFileContentRequest";
+
+        public const string GetFileContentResponse = "GetFileContentResponse";
 
         public const string GetFileRequest = "GetFileRequest";
 

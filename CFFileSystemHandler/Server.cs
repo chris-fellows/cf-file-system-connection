@@ -1,5 +1,7 @@
 ﻿using CFFileSystemConnection;
 using CFFileSystemConnection.Common;
+using CFFileSystemConnection.Interfaces;
+using CFFileSystemConnection.Service;
 
 namespace CFFileSystemHandler
 {
@@ -10,9 +12,9 @@ namespace CFFileSystemHandler
     {
         private readonly FileSystemRequestHandler _fileSystemRequestHandler;
 
-        public Server()
-        {
-            _fileSystemRequestHandler = new FileSystemRequestHandler(new FileSystemLocal());
+        public Server(IUserService userService)
+        {           
+            _fileSystemRequestHandler = new FileSystemRequestHandler(new FileSystemLocal(), userService);
             _fileSystemRequestHandler.OnStatusMessage += _fileSystemRequestHandler_OnStatusMessage;
         }
 

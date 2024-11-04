@@ -25,6 +25,11 @@ namespace CFFileSystemConnection.MessageConverters
                 {
                    new ConnectionMessageParameter()
                    {
+                       Name = "SecurityKey",
+                       Value = getFolderRequest.SecurityKey
+                   },
+                   new ConnectionMessageParameter()
+                   {
                        Name = "Path",
                        Value = getFolderRequest.Path
                    },
@@ -49,6 +54,7 @@ namespace CFFileSystemConnection.MessageConverters
             {
                 Id = connectionMessage.Id,
                 TypeId = connectionMessage.TypeId,
+                SecurityKey = connectionMessage.Parameters.First(p => p.Name == "SecurityKey").Value,
                 Path = connectionMessage.Parameters.First(p => p.Name == "Path").Value,
                 GetFiles = Convert.ToBoolean(connectionMessage.Parameters.First(p => p.Name == "GetFiles").Value),
                 RecurseSubFolders = Convert.ToBoolean(connectionMessage.Parameters.First(p => p.Name == "RecurseSubFolders").Value)

@@ -1,48 +1,51 @@
 ﻿using CFConnectionMessaging.Interfaces;
 using CFConnectionMessaging.Models;
+using CFFileSystemConnection.Constants;
 using CFFileSystemConnection.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace CFFileSystemConnection.MessageConverters
 {
-    /// <summary>
-    /// Converts between ConnectionMessage and GetFileRequest
-    /// </summary>
-    public class GetFileRequestMessageConverter : IExternalMessageConverter<GetFileRequest>
+    public class GetFileContentRequestMessageConverter : IExternalMessageConverter<GetFileContentRequest>
     {
-        public ConnectionMessage GetConnectionMessage(GetFileRequest getFileRequest)
+        public ConnectionMessage GetConnectionMessage(GetFileContentRequest getFileContentRequest)
         {
             var connectionMessage = new ConnectionMessage()
             {
-                Id = getFileRequest.Id,
-                TypeId = getFileRequest.TypeId,
+                Id = getFileContentRequest.Id,
+                TypeId = MessageTypeIds.GetFileContentRequest,
                 Parameters = new List<ConnectionMessageParameter>()
                 {
                    new ConnectionMessageParameter()
                    {
                        Name = "SecurityKey",
-                       Value = getFileRequest.SecurityKey
+                       Value = getFileContentRequest.SecurityKey
                    },
                    new ConnectionMessageParameter()
                    {
                        Name = "Path",
-                       Value = getFileRequest.Path
+                       Value = getFileContentRequest.Path
                    },
                 }
             };
             return connectionMessage;
         }
 
-        public GetFileRequest GetExternalMessage(ConnectionMessage connectionMessage)
+        public GetFileContentRequest GetExternalMessage(ConnectionMessage connectionMessage)
         {
-            var getFileRequest = new GetFileRequest()
+            var getFileContentRequest = new GetFileContentRequest()
             {
                 Id = connectionMessage.Id,
-                TypeId = connectionMessage.TypeId,                
+                TypeId = connectionMessage.TypeId,
                 SecurityKey = connectionMessage.Parameters.First(p => p.Name == "SecurityKey").Value,
                 Path = connectionMessage.Parameters.First(p => p.Name == "Path").Value
             };
 
-            return getFileRequest;
+            return getFileContentRequest;
         }
     }
 }

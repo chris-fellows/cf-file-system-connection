@@ -1,14 +1,19 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using CFFileSystemConnection.Models;
+using CFFileSystemConnection.Interfaces;
+using CFFileSystemConnection.Service;
 using CFFileSystemHandler;
 
 try
 {
     Console.WriteLine("Starting Request Handler");
 
+    // Create users
+    IUserService userService = new JsonUserService(Path.Combine(Environment.CurrentDirectory, "Data"));
+    InternalUtilities.CreateUsers(userService);
+
     // Start listening
-    const int port = 11000;
-    var server = new Server();
+    const int port = 11000;      
+    var server = new Server(userService);
     server.StartListening(port);
 
     Console.WriteLine($"Request Handler listening (Port {port})");
