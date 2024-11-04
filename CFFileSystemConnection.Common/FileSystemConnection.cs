@@ -7,6 +7,7 @@ using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
 using System.Diagnostics;
+using System.IO;
 
 namespace CFFileSystemConnection.Common
 {
@@ -22,6 +23,9 @@ namespace CFFileSystemConnection.Common
         private readonly string _securityKey;
 
         // Message converters
+        private readonly IExternalMessageConverter<GetDrivesRequest> _getDrivesRequestConverter = new GetDrivesRequestMessageConverter();
+        private readonly IExternalMessageConverter<GetDrivesResponse> _getDrivesResponseConverter = new GetDrivesResponseMessageConverter();
+
         private readonly IExternalMessageConverter<GetFolderRequest> _getFolderRequestConverter = new GetFolderRequestMessageConverter();
         private readonly IExternalMessageConverter<GetFolderResponse> _getFolderResponseConverter = new GetFolderResponseMessageConverter();
 
@@ -80,6 +84,10 @@ namespace CFFileSystemConnection.Common
         {
             switch(connectionMessage.TypeId)
             {
+                case MessageTypeIds.GetDrivesResponse:
+                    var getDrivesResponse = _getDrivesResponseConverter.GetExternalMessage(connectionMessage);
+                    _responseMessages.Add(getDrivesResponse);
+                    break;
                 case MessageTypeIds.GetFileContentResponse:
                     var getFileContentResponse = _getFileContentResponseConverter.GetExternalMessage(connectionMessage);
                     _responseMessages.Add(getFileContentResponse);
@@ -95,6 +103,35 @@ namespace CFFileSystemConnection.Common
                     _responseMessages.Add(getFolderResponse);
                     break;                
             }
+        }
+
+        public List<DriveObject> GetDrives()
+        {
+            // Send GetDrivesRequest message
+            var getDrivesRequest = new GetDrivesRequest()
+            {
+                Id = Guid.NewGuid().ToString(),
+                TypeId = MessageTypeIds.GetDrivesRequest,
+                SecurityKey = _securityKey,                
+            };
+            _connection.SendMessage(_getDrivesRequestConverter.GetConnectionMessage(getDrivesRequest), _remoteEndpointInfo);
+
+            // Wait for response. Should only receive one response
+            var response = WaitForResponses(getDrivesRequest, _responseTimeout, _responseMessages).FirstOrDefault();
+
+            // Process response
+            if (response != null)
+            {
+                var getDrivesResponse = (GetDrivesResponse)response;
+                if (getDrivesResponse.Response.ErrorCode != null)
+                {
+                    throw new FileSystemConnectionException($"Error getting drives: {getDrivesResponse.Response.ErrorMessage}")
+                    { ResponseErrorCode = getDrivesResponse.Response.ErrorCode };
+                }
+                return getDrivesResponse.Drives;
+            }
+
+            return null;
         }
 
         public FolderObject? GetFolder(string path, bool getFiles, bool recurseSubFolders)

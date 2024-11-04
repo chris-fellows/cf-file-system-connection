@@ -14,6 +14,22 @@ namespace CFFileSystemConnection.Common
     /// </summary>
     public class FileSystemLocal : IFileSystem
     {
+        public List<DriveObject> GetDrives()
+        {
+            var drives = new List<DriveObject>();
+
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                drives.Add(new DriveObject()
+                {
+                    Name = drive.Name,
+                    Path = drive.RootDirectory.FullName
+                });
+            }
+
+            return drives;
+        }
+
         public FolderObject? GetFolder(string path, bool getFiles, bool recurseSubFolders)
         {
             if (Directory.Exists(path))

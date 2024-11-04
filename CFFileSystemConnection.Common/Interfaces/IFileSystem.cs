@@ -8,6 +8,12 @@ namespace CFFileSystemConnection.Interfaces
     public interface IFileSystem
     {
         /// <summary>
+        /// Gets drives
+        /// </summary>
+        /// <returns></returns>
+        List<DriveObject> GetDrives();
+
+        /// <summary>
         /// Gets folder details
         /// </summary>
         /// <param name="path">Path to check</param>

@@ -44,12 +44,7 @@ namespace CFFileSystemMobile.ViewModels
                 Status = status;
             };
 
-            StringBuilder debug = new StringBuilder("");
-            var folders = Directory.GetDirectories("/");
-            foreach(var folder in folders)
-            {
-                debug.AppendLine(folder);
-            }
+            StringBuilder debug = new StringBuilder("");          
             DebugMessage = debug.ToString();               
         }
 

@@ -15,6 +15,8 @@ namespace CFFileSystemManager
         private readonly IConnectionSettingsService _connectionSettingsService;
         private IFileSystem _fileSystem;
 
+        private const string _noneText = "<None>";
+
         public MainForm()
         {
             InitializeComponent();
@@ -78,9 +80,31 @@ namespace CFFileSystemManager
             var localPort = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings.Get("LocalPort").ToString());
             fileSystemConnection.StartListening(localPort);
 
-            DisplayStatus("Refreshing folders");
-            RefreshFolders();
+            // Display drives            
+            RefreshDrives();
+
+            //DisplayStatus("Refreshing folders");
+            //RefreshFolders();
             DisplayStatus("Ready");
+        }
+
+        private void RefreshDrives()
+        {
+            DisplayStatus("Getting drives");
+
+            var drives = _fileSystem.GetDrives();
+
+            if (!drives.Any())
+            {
+                drives.Add(new DriveObject() { Name = _noneText });
+            }
+
+            tscbDrive.ComboBox.DisplayMember = nameof(DriveObject.Name);
+            tscbDrive.ComboBox.ValueMember = nameof(DriveObject.Name);
+            tscbDrive.ComboBox.DataSource = drives;
+            tscbDrive.SelectedIndex = 0;
+
+            DisplayStatus("Got drives");
         }
 
         private void DisplayStatus(string status)
@@ -123,12 +147,16 @@ namespace CFFileSystemManager
         }
 
         /// <summary>
-        /// Refreshes folder list
+        /// Refreshes folder list for drive
         /// </summary>
-        private void RefreshFolders()
+        private void RefreshRootFolders(DriveObject driveObject)
         {
+            DisplayStatus($"Refreshing folders for {driveObject.Name}");
+
             // Get root folder and next level folders
-            var folder = _fileSystem.GetFolder("/", false, false);
+            //var folder = _fileSystem.GetFolder("/", false, false);
+
+            var folder = _fileSystem.GetFolder(driveObject.Path, false, false);
 
             tvwFolder.Nodes.Clear();
 
@@ -145,7 +173,7 @@ namespace CFFileSystemManager
             // Expand top level sub-folders of root
             rootNode.Expand();
 
-            int xxx = 1000;
+            DisplayStatus("Ready");
         }
 
         /// <summary>
@@ -229,7 +257,8 @@ namespace CFFileSystemManager
             CreateConnectionSettingsList(false);
 
             // Display connection list
-            var connectionSettingsList = _connectionSettingsService.GetAll();
+            var connectionSettingsList = _connectionSettingsService.GetAll().OrderBy(cs => cs.Name.Contains("G82") ? 0 : 1).ToList();
+
             tscbConnection.ComboBox.DisplayMember = nameof(ConnectionSettings.Name);
             tscbConnection.ComboBox.ValueMember = nameof(ConnectionSettings.Id);
             tscbConnection.ComboBox.DataSource = connectionSettingsList;
@@ -274,7 +303,7 @@ namespace CFFileSystemManager
             // Copy files
             if (folderObjectFull.Files != null)
             {
-                foreach(var fileObject in folderObjectFull.Files)
+                foreach (var fileObject in folderObjectFull.Files)
                 {
                     // Get file content
                     // TODO: Split file
@@ -285,20 +314,36 @@ namespace CFFileSystemManager
                         var localFilePath = Path.Combine(localFolder, fileObject.Name);
                         File.WriteAllBytes(localFilePath, fileContent);
                         Thread.Yield();
-                    }                    
+                    }
                 }
             }
 
             // Copy sub-folders
             if (folderObjectFull.Folders != null)
             {
-                foreach(var subFolderObject in folderObjectFull.Folders)
+                foreach (var subFolderObject in folderObjectFull.Folders)
                 {
                     CopyFolderToLocal(subFolderObject, Path.Combine(localFolder, subFolderObject.Name));
                 }
             }
 
             DisplayStatus($"Copyied {folderObject.Path}");
+        }
+
+        private void tscbDrive_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (tscbDrive.SelectedIndex != -1)
+            {
+                DriveObject driveObject = (DriveObject)tscbDrive.SelectedItem;
+                if (driveObject.Name == _noneText)
+                {
+                    tvwFolder.Nodes.Clear();
+                }
+                else
+                {
+                    RefreshRootFolders(driveObject);
+                }
+            }
         }
     }
 }

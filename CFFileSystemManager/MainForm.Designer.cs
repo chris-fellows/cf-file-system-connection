@@ -32,6 +32,8 @@
             toolStrip1 = new ToolStrip();
             toolStripLabel1 = new ToolStripLabel();
             tscbConnection = new ToolStripComboBox();
+            toolStripLabel2 = new ToolStripLabel();
+            tscbDrive = new ToolStripComboBox();
             statusStrip1 = new StatusStrip();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             splitContainer1 = new SplitContainer();
@@ -48,10 +50,10 @@
             // 
             // toolStrip1
             // 
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripLabel1, tscbConnection });
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripLabel1, tscbConnection, toolStripLabel2, tscbDrive });
             toolStrip1.Location = new Point(0, 0);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new Size(1156, 25);
+            toolStrip1.Size = new Size(1245, 25);
             toolStrip1.TabIndex = 0;
             toolStrip1.Text = "toolStrip1";
             // 
@@ -68,12 +70,25 @@
             tscbConnection.Size = new Size(175, 25);
             tscbConnection.SelectedIndexChanged += tscbConnection_SelectedIndexChanged;
             // 
+            // toolStripLabel2
+            // 
+            toolStripLabel2.Name = "toolStripLabel2";
+            toolStripLabel2.Size = new Size(37, 22);
+            toolStripLabel2.Text = "Drive:";
+            // 
+            // tscbDrive
+            // 
+            tscbDrive.DropDownStyle = ComboBoxStyle.DropDownList;
+            tscbDrive.Name = "tscbDrive";
+            tscbDrive.Size = new Size(250, 25);
+            tscbDrive.SelectedIndexChanged += tscbDrive_SelectedIndexChanged;
+            // 
             // statusStrip1
             // 
             statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
-            statusStrip1.Location = new Point(0, 666);
+            statusStrip1.Location = new Point(0, 698);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(1156, 22);
+            statusStrip1.Size = new Size(1245, 22);
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
@@ -92,8 +107,8 @@
             // splitContainer1.Panel1
             // 
             splitContainer1.Panel1.Controls.Add(tvwFolder);
-            splitContainer1.Size = new Size(1156, 641);
-            splitContainer1.SplitterDistance = 385;
+            splitContainer1.Size = new Size(1245, 673);
+            splitContainer1.SplitterDistance = 414;
             splitContainer1.TabIndex = 2;
             // 
             // tvwFolder
@@ -101,7 +116,7 @@
             tvwFolder.Dock = DockStyle.Fill;
             tvwFolder.Location = new Point(0, 0);
             tvwFolder.Name = "tvwFolder";
-            tvwFolder.Size = new Size(385, 641);
+            tvwFolder.Size = new Size(414, 673);
             tvwFolder.TabIndex = 0;
             tvwFolder.BeforeExpand += tvwFolder_BeforeExpand;
             tvwFolder.AfterSelect += tvwFolder_AfterSelect;
@@ -110,12 +125,12 @@
             // 
             cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem });
             cmsFolder.Name = "cmsFolder";
-            cmsFolder.Size = new Size(181, 48);
+            cmsFolder.Size = new Size(145, 26);
             // 
             // copyToLocalToolStripMenuItem
             // 
             copyToLocalToolStripMenuItem.Name = "copyToLocalToolStripMenuItem";
-            copyToLocalToolStripMenuItem.Size = new Size(180, 22);
+            copyToLocalToolStripMenuItem.Size = new Size(144, 22);
             copyToLocalToolStripMenuItem.Text = "Copy to local";
             copyToLocalToolStripMenuItem.Click += copyToLocalToolStripMenuItem_Click;
             // 
@@ -123,7 +138,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1156, 688);
+            ClientSize = new Size(1245, 720);
             Controls.Add(splitContainer1);
             Controls.Add(statusStrip1);
             Controls.Add(toolStrip1);
@@ -153,5 +168,7 @@
         private ToolStripStatusLabel toolStripStatusLabel1;
         private ContextMenuStrip cmsFolder;
         private ToolStripMenuItem copyToLocalToolStripMenuItem;
+        private ToolStripLabel toolStripLabel2;
+        private ToolStripComboBox tscbDrive;
     }
 }

@@ -30,6 +30,9 @@ namespace CFFileSystemConnection.Common
         private readonly IUserService _userService;
 
         // Message converters
+        private readonly IExternalMessageConverter<GetDrivesRequest> _getDrivesRequestConverter = new GetDrivesRequestMessageConverter();
+        private readonly IExternalMessageConverter<GetDrivesResponse> _getDrivesResponseConverter = new GetDrivesResponseMessageConverter();
+
         private readonly IExternalMessageConverter<GetFolderRequest> _getFolderRequestConverter = new GetFolderRequestMessageConverter();
         private readonly IExternalMessageConverter<GetFolderResponse> _getFolderResponseConverter = new GetFolderResponseMessageConverter();
 
@@ -70,6 +73,10 @@ namespace CFFileSystemConnection.Common
             // Handle message. Should only be a request
             switch(connectionMessage.TypeId)
             {
+                case MessageTypeIds.GetDrivesRequest:
+                    var getDrivesRequest = _getDrivesRequestConverter.GetExternalMessage(connectionMessage);
+                    HandleGetDrivesRequest(getDrivesRequest, messageReceivedInfo);
+                    break;
                 case MessageTypeIds.GetFileContentRequest:                    
                     var getFileContentRequest = _getFileContentRequestConverter.GetExternalMessage(connectionMessage);
                     HandleGetFileContentRequest(getFileContentRequest, messageReceivedInfo);
@@ -97,6 +104,69 @@ namespace CFFileSystemConnection.Common
         }
 
         public bool IsListening => _connection.IsListening;
+
+        /// <summary>
+        /// Handles GetDrivesRequest message
+        /// </summary>
+        /// <param name="getFolderRequest"></param>
+        private void HandleGetDrivesRequest(GetDrivesRequest getDrivesRequest, MessageReceivedInfo messageReceivedInfo)
+        {
+            if (OnStatusMessage != null)
+            {
+                OnStatusMessage($"Processing request {getDrivesRequest.Id} to get drives");
+            }
+
+            var getDrivesResponse = new GetDrivesResponse()
+            {
+                Id = Guid.NewGuid().ToString(),
+                TypeId = MessageTypeIds.GetDrivesResponse,
+                Response = new MessageResponse()
+                {
+                    MessageId = getDrivesRequest.Id,
+                    IsMore = false
+                }
+            };
+
+            // Check permissions
+            var user = _userService.GetBySecurityKey(getDrivesRequest.SecurityKey);
+            if (user == null ||
+                !user.Roles.Contains(UserRoles.FileSystemRead))   // Invalid credentials
+            {
+                getDrivesResponse.Response.ErrorMessage = "Permission denied";
+                getDrivesResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+            }
+            else     // Valid credentials
+            {
+                try
+                {
+                    getDrivesResponse.Drives = _fileSystemLocal.GetDrives();
+                    if (getDrivesResponse.Drives == null)
+                    {
+                        getDrivesResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;
+                        getDrivesResponse.Response.ErrorMessage = "No drives available";
+                    }
+                }
+                catch (Exception exception)
+                {
+                    getDrivesResponse.Response.ErrorMessage = exception.Message;
+                    getDrivesResponse.Response.ErrorCode = ResponseErrorCodes.FileSystemError;
+                }
+            }
+
+            // Send response
+            if (OnStatusMessage != null)
+            {
+                OnStatusMessage($"Sending response for get drives request {getDrivesRequest.Id} to " +
+                            $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
+            }
+            _connection.SendMessage(_getDrivesResponseConverter.GetConnectionMessage(getDrivesResponse),
+                                messageReceivedInfo.RemoteEndpointInfo);
+
+            if (OnStatusMessage != null)
+            {
+                OnStatusMessage($"Processed request {getDrivesRequest.Id} to get drives");
+            }
+        }
 
         /// <summary>
         /// Handles GetFolderRequest message
