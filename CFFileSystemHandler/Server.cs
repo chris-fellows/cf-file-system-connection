@@ -1,7 +1,6 @@
-﻿using CFFileSystemConnection;
-using CFFileSystemConnection.Common;
+﻿using CFFileSystemConnection.Common;
 using CFFileSystemConnection.Interfaces;
-using CFFileSystemConnection.Service;
+using CFFileSystemHandler.Interfaces;
 
 namespace CFFileSystemHandler
 {
@@ -11,16 +10,20 @@ namespace CFFileSystemHandler
     internal class Server
     {
         private readonly FileSystemRequestHandler _fileSystemRequestHandler;
+        private readonly ILoggingService _loggingService;
 
-        public Server(IUserService userService)
+        public Server(ILoggingService loggingService, IUserService userService)
         {           
             _fileSystemRequestHandler = new FileSystemRequestHandler(new FileSystemLocal(), userService);
             _fileSystemRequestHandler.OnStatusMessage += _fileSystemRequestHandler_OnStatusMessage;
+
+            _loggingService = loggingService;
         }
 
         private void _fileSystemRequestHandler_OnStatusMessage(string message)
         {
             Console.WriteLine($"{DateTimeOffset.UtcNow} {message}");
+            _loggingService.Log(message);
         }
 
         public void StartListening(int port)

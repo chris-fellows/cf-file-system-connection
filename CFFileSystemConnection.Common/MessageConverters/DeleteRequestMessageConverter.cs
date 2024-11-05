@@ -1,6 +1,5 @@
 ﻿using CFConnectionMessaging.Interfaces;
 using CFConnectionMessaging.Models;
-using CFFileSystemConnection.Constants;
 using CFFileSystemConnection.Models;
 using System;
 using System.Collections.Generic;
@@ -10,34 +9,34 @@ using System.Threading.Tasks;
 
 namespace CFFileSystemConnection.MessageConverters
 {
-    public class GetFileContentRequestMessageConverter : IExternalMessageConverter<GetFileContentRequest>
+    public class DeleteRequestMessageConverter : IExternalMessageConverter<DeleteRequest>
     {
-        public ConnectionMessage GetConnectionMessage(GetFileContentRequest getFileContentRequest)
+        public ConnectionMessage GetConnectionMessage(DeleteRequest deleteRequest)
         {
             var connectionMessage = new ConnectionMessage()
             {
-                Id = getFileContentRequest.Id,
-                TypeId = getFileContentRequest.TypeId,
+                Id = deleteRequest.Id,
+                TypeId = deleteRequest.TypeId,
                 Parameters = new List<ConnectionMessageParameter>()
                 {
                    new ConnectionMessageParameter()
                    {
                        Name = "SecurityKey",
-                       Value = getFileContentRequest.SecurityKey
+                       Value = deleteRequest.SecurityKey
                    },
                    new ConnectionMessageParameter()
                    {
                        Name = "Path",
-                       Value = getFileContentRequest.Path
-                   },
+                       Value = deleteRequest.Path
+                   }
                 }
             };
             return connectionMessage;
         }
 
-        public GetFileContentRequest GetExternalMessage(ConnectionMessage connectionMessage)
+        public DeleteRequest GetExternalMessage(ConnectionMessage connectionMessage)
         {
-            var getFileContentRequest = new GetFileContentRequest()
+            var deleteRequest = new DeleteRequest()
             {
                 Id = connectionMessage.Id,
                 TypeId = connectionMessage.TypeId,
@@ -45,7 +44,7 @@ namespace CFFileSystemConnection.MessageConverters
                 Path = connectionMessage.Parameters.First(p => p.Name == "Path").Value
             };
 
-            return getFileContentRequest;
+            return deleteRequest;
         }
     }
 }

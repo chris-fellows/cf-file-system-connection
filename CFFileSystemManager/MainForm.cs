@@ -5,6 +5,8 @@ using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Models;
 using CFFileSystemConnection.Service;
 using CFFileSystemManager.Controls;
+using System.CodeDom;
+using System.IO;
 using System.Net;
 using System.Windows.Forms;
 
@@ -14,12 +16,24 @@ namespace CFFileSystemManager
     {
         private readonly IConnectionSettingsService _connectionSettingsService;
         private IFileSystem _fileSystem;
+        private IFileSystem _fileSystemLocal = new FileSystemLocal();
+
+        /// <summary>
+        /// Size of file sections to transfer when reading or writing files
+        /// </summary>
+        private const int _fileSectionBytes = 1024 * 1000;
 
         private const string _noneText = "<None>";
 
         public MainForm()
         {
             InitializeComponent();
+
+            //var file = "D:\\Test\\Creed\\Human Clay\\09-Higher.mp3";
+            //TestFileReadSections(file);
+
+            //IFileSystem fileSystem = new FileSystemLocal();
+            //var folderObject = fileSystem.GetFolder(@"C:\", false, false);
 
             _connectionSettingsService = new JsonConnectionSettingsService(Path.Combine(Environment.CurrentDirectory, "Data"));
 
@@ -53,6 +67,55 @@ namespace CFFileSystemManager
             */
         }
 
+        //private void TestFileReadSections(string file)
+        //{            
+        //    int sectionCount = 0;
+        //    var sections = new List<byte[]>();
+        //    using (var streamReader = new BinaryReader(File.OpenRead(file)))
+        //    {
+        //        var section = new byte[0];
+        //        do
+        //        {
+        //            section = streamReader.ReadBytes(_fileSectionBytes);
+        //            sectionCount++;
+        //            sections.Add(section);
+        //        } while (streamReader.BaseStream.Position < streamReader.BaseStream.Length);
+        //    }
+
+        //    var newFile = Path.Combine("D:\\Test\\", Path.GetFileName(file));
+        //    using (var writer = new BinaryWriter(File.OpenWrite(newFile)))
+        //    {
+        //        while (sections.Any())
+        //        {
+        //            writer.Write(sections[0]);
+        //            sections.RemoveAt(0);
+        //        }
+
+        //        writer.Flush();
+        //    }
+
+        //    var isSameFileContents = IsSameFileContents(file, newFile);
+
+        //    int xxx = 1000;
+        //}
+
+        //private static bool IsSameFileContents(string file1, string file2)
+        //{
+        //    if (!File.Exists(file1) || !File.Exists(file2)) return false;
+
+        //    var content1 = File.ReadAllBytes(file1);
+        //    var content2 = File.ReadAllBytes(file2);
+
+        //    if (content1.Length != content2.Length) return false;
+
+        //    for (int index = 0; index < content1.Length; index++)
+        //    {
+        //        if (content1[index] != content2[index]) return false;
+        //    }
+
+        //    return true;
+        //}
+
         /// <summary>
         /// Initialises the connection to the file system. Displays initialise list of top level folders.
         /// </summary>
@@ -82,9 +145,7 @@ namespace CFFileSystemManager
 
             // Display drives            
             RefreshDrives();
-
-            //DisplayStatus("Refreshing folders");
-            //RefreshFolders();
+   
             DisplayStatus("Ready");
         }
 
@@ -257,7 +318,7 @@ namespace CFFileSystemManager
             CreateConnectionSettingsList(false);
 
             // Display connection list
-            var connectionSettingsList = _connectionSettingsService.GetAll().OrderBy(cs => cs.Name.Contains("G82") ? 0 : 1).ToList();
+            var connectionSettingsList = _connectionSettingsService.GetAll().OrderBy(cs => cs.Name.Contains("Console") ? 0 : 1).ToList();
 
             tscbConnection.ComboBox.DisplayMember = nameof(ConnectionSettings.Name);
             tscbConnection.ComboBox.ValueMember = nameof(ConnectionSettings.Id);
@@ -305,16 +366,10 @@ namespace CFFileSystemManager
             {
                 foreach (var fileObject in folderObjectFull.Files)
                 {
-                    // Get file content
-                    // TODO: Split file
+                    // Get file content                    
                     DisplayStatus($"Copying {fileObject.Path}");
-                    var fileContent = _fileSystem.GetFileContent(fileObject.Path);
-                    if (fileContent != null)
-                    {
-                        var localFilePath = Path.Combine(localFolder, fileObject.Name);
-                        File.WriteAllBytes(localFilePath, fileContent);
-                        Thread.Yield();
-                    }
+                    CopyFileToLocal(fileObject, Path.Combine(localFolder, fileObject.Name));
+                    Thread.Yield();
                 }
             }
 
@@ -328,6 +383,24 @@ namespace CFFileSystemManager
             }
 
             DisplayStatus($"Copyied {folderObject.Path}");
+        }
+
+        /// <summary>
+        /// Copies remote file to local
+        /// </summary>
+        /// <param name="fileObject"></param>
+        /// <param name="localFile"></param>
+        private void CopyFileToLocal(FileObject fileObject, string localFile)
+        {
+            using (var writer = new BinaryWriter(File.OpenWrite(localFile)))
+            {
+                _fileSystem.GetFileContentBySection(fileObject.Path, 1024 * 500, (section, isMore) =>
+                {
+                    writer.Write(section);
+                    //lastIsMore = isMore;
+                });
+                writer.Flush();
+            }
         }
 
         private void tscbDrive_SelectedIndexChanged(object sender, EventArgs e)
@@ -344,6 +417,125 @@ namespace CFFileSystemManager
                     RefreshRootFolders(driveObject);
                 }
             }
+        }
+
+        private void testCopyFileBySectionsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //var remoteFile = "D:\\Test\\Creed\\Human Clay\\09-Higher.mp3";
+            //var localFile = "D:\\Test\\09-Higher-Copy.mp3";
+
+            //var lastIsMore = false;
+            //try
+            //{
+            //    using (var writer = new BinaryWriter(File.OpenWrite(localFile)))
+            //    {
+            //        _fileSystem.GetFileContentBySection(remoteFile, 1024 * 500, (section, isMore) =>
+            //        {
+            //            writer.Write(section);
+            //            lastIsMore = isMore;
+            //        });
+            //        writer.Flush();
+            //    }
+            //}
+            //catch (Exception exception)
+            //{   // Clean up partial file
+            //    if (File.Exists(localFile)) File.Delete(localFile);
+            //    throw;
+            //}
+
+            //// Check file same
+            //var isSameFile = IsSameFileContents(remoteFile, localFile);
+
+            //int xxx = 1000;
+        }
+
+        private void copyLocalFileToToolStripMenuItem_Click(object sender, EventArgs e)
+        {            
+            OpenFileDialog dialog = new OpenFileDialog()
+            {
+                Title = "Select file(s)",
+                CheckFileExists = true
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                FolderObject folderObject = (FolderObject)tvwFolder.SelectedNode.Tag;
+
+                // Copy file(s)
+                foreach(var localFile in dialog.FileNames)
+                {
+                    string remoteFile = Path.Combine(folderObject.Path, Path.GetFileName(localFile));
+                    CopyLocalFileTo(localFile, remoteFile, _fileSectionBytes);
+                }
+
+                MessageBox.Show("File(s) copied", "Copy File(s)");
+            }
+
+        }
+
+        /// <summary>
+        /// Copies local file to remote. We stream sections of the file in to multiple request message
+        /// </summary>
+        /// <param name="localFile"></param>
+        /// <param name="remoteFile"></param>
+        private void CopyLocalFileTo(string localFile, string remoteFile, int sectionBytes)
+        {            
+            DisplayStatus($"Copying {localFile}");
+
+            // Set remote object
+            var remoteFileObject = _fileSystemLocal.GetFile(localFile);
+            remoteFileObject.Path = remoteFile;
+
+            // Start task to read file in to queue
+            var queueMutex = new Mutex();
+            var sectionQueue = new Queue<Tuple<byte[], bool>>();
+            var readFileTask = Task.Factory.StartNew(() =>
+            {
+                using (var streamReader = new BinaryReader(File.OpenRead(localFile)))
+                {                    
+                    do
+                    {
+                        // Limit amount of file in memory
+                        while (sectionQueue.Count > 50)
+                        {
+                            Thread.Sleep(100);
+                        }
+
+                        // Read section
+                        var section = streamReader.ReadBytes(sectionBytes);
+                        var isMore = streamReader.BaseStream.Position < streamReader.BaseStream.Length;
+
+                        // Add to queue
+                        queueMutex.WaitOne();
+                        sectionQueue.Enqueue(new Tuple<byte[], bool>(section, isMore));
+                        queueMutex.ReleaseMutex();
+
+                        Thread.Yield();
+                    } while (streamReader.BaseStream.Position < streamReader.BaseStream.Length);
+                }
+            });
+            
+            // Write file contents by section. Completes when final section writtn
+            _fileSystem.WriteFileContentBySection(remoteFileObject, () =>
+            {
+                // Wait for section
+                while (!sectionQueue.Any())
+                {
+                    Thread.Sleep(100);
+                }
+
+                // Process next item
+                queueMutex.WaitOne();
+                var section = sectionQueue.Dequeue();
+                queueMutex.ReleaseMutex();
+                return section;
+            });
+
+            // Not really necessary but wait
+            readFileTask.Wait();
+
+            DisplayStatus($"Copied {localFile}");
+
+            int xxx = 1000;
         }
     }
 }

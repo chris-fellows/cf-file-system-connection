@@ -2,10 +2,15 @@
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Service;
 using CFFileSystemHandler;
+using CFFileSystemHandler.Interfaces;
+using CFFileSystemHandler.Services;
+
+// Create logging service
+ILoggingService loggingService = new CSVLoggingService(Path.Combine(Environment.CurrentDirectory, "Logs"));
 
 try
 {
-    Console.WriteLine("Starting Request Handler");
+    loggingService.Log("Starting File System Handler");
 
     // Create users
     IUserService userService = new JsonUserService(Path.Combine(Environment.CurrentDirectory, "Data"));
@@ -13,21 +18,20 @@ try
 
     // Start listening
     const int port = 11000;      
-    var server = new Server(userService);
+    var server = new Server(loggingService, userService);
     server.StartListening(port);
 
-    Console.WriteLine($"Request Handler listening (Port {port})");
+    loggingService.Log($"Listening (Port {port})");
 
     // Run until cancelled
-    var cancellationTokenSource = new CancellationTokenSource();
+    var cancellationTokenSource = new CancellationTokenSource();    // Currently no wait to cancel cleanly
     server.Run(cancellationTokenSource.Token);
 
-    Console.WriteLine("Terminating Request Handler");
+    loggingService.Log("Terminating File System Handler");
 }
 catch(Exception exception)
 {
-    Console.WriteLine($"Exception: {exception.Message}");
-    Console.WriteLine($"Stack: {exception.StackTrace}");
+    loggingService.Log($"Exception: {exception.Message}");
+    loggingService.Log($"Stack: {exception.StackTrace}");
 }
 
-var result = Console.ReadLine();

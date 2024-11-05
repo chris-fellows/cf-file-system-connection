@@ -27,9 +27,7 @@ namespace CFFileSystemConnection.MessageConverters
                     },
                    new ConnectionMessageParameter()
                    {
-                       Name = "Folder",
-                       //Value = getFolderResponse.FolderObject == null ? "" :
-                       //             XmlUtilities.SerializeToString(getFolderResponse.FolderObject)                                        
+                       Name = "Folder",                                             
                        Value = getFolderResponse.FolderObject == null ? "" :
                                     JsonUtilities.SerializeToBase64String(getFolderResponse.FolderObject,
                                             JsonUtilities.DefaultJsonSerializerOptions)

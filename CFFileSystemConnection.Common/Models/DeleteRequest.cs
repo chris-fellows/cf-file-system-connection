@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace CFFileSystemConnection.Models
 {
-    public class GetFileContentRequest : MessageBase
+    public class DeleteRequest : MessageBase      
     {
         public string Path { get; set; } = String.Empty;
-
-        public int SectionBytes { get; set; } = 1024 * 1000;    // Multiple response messages
     }
 }

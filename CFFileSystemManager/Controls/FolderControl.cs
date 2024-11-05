@@ -113,12 +113,33 @@ namespace CFFileSystemManager.Controls
         }
 
         private void DownloadFile(FileObject fileObject, string localFile)
-        {
-            var content = _fileSystem.GetFileContent(fileObject.Path);
-            if (content != null)
+        {            
+            try
             {
-                File.WriteAllBytes(localFile, content);
+
+
+                using (var writer = new BinaryWriter(File.OpenWrite(localFile)))
+                {
+                    _fileSystem.GetFileContentBySection(fileObject.Path, 1024 * 500, (section, isMore) =>
+                    {
+                        writer.Write(section);
+                        //lastIsMore = isMore;
+                    });
+                    writer.Flush();
+                }
             }
+            catch(Exception exception)
+            {
+                // Clean up partial file
+                if (File.Exists(localFile)) File.Delete(localFile);
+                throw;
+            }
+
+            //var content = _fileSystem.GetFileContent(fileObject.Path);
+            //if (content != null)
+            //{
+            //    File.WriteAllBytes(localFile, content);
+            //}
         }
     }
 }

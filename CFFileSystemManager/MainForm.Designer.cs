@@ -40,6 +40,8 @@
             tvwFolder = new TreeView();
             cmsFolder = new ContextMenuStrip(components);
             copyToLocalToolStripMenuItem = new ToolStripMenuItem();
+            testCopyFileBySectionsToolStripMenuItem = new ToolStripMenuItem();
+            copyLocalFileToToolStripMenuItem = new ToolStripMenuItem();
             toolStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -123,16 +125,30 @@
             // 
             // cmsFolder
             // 
-            cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem });
+            cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem, testCopyFileBySectionsToolStripMenuItem, copyLocalFileToToolStripMenuItem });
             cmsFolder.Name = "cmsFolder";
-            cmsFolder.Size = new Size(145, 26);
+            cmsFolder.Size = new Size(205, 92);
             // 
             // copyToLocalToolStripMenuItem
             // 
             copyToLocalToolStripMenuItem.Name = "copyToLocalToolStripMenuItem";
-            copyToLocalToolStripMenuItem.Size = new Size(144, 22);
+            copyToLocalToolStripMenuItem.Size = new Size(204, 22);
             copyToLocalToolStripMenuItem.Text = "Copy to local";
             copyToLocalToolStripMenuItem.Click += copyToLocalToolStripMenuItem_Click;
+            // 
+            // testCopyFileBySectionsToolStripMenuItem
+            // 
+            testCopyFileBySectionsToolStripMenuItem.Name = "testCopyFileBySectionsToolStripMenuItem";
+            testCopyFileBySectionsToolStripMenuItem.Size = new Size(204, 22);
+            testCopyFileBySectionsToolStripMenuItem.Text = "Test copy file by sections";
+            testCopyFileBySectionsToolStripMenuItem.Click += testCopyFileBySectionsToolStripMenuItem_Click;
+            // 
+            // copyLocalFileToToolStripMenuItem
+            // 
+            copyLocalFileToToolStripMenuItem.Name = "copyLocalFileToToolStripMenuItem";
+            copyLocalFileToToolStripMenuItem.Size = new Size(204, 22);
+            copyLocalFileToToolStripMenuItem.Text = "Copy local file to";
+            copyLocalFileToToolStripMenuItem.Click += copyLocalFileToToolStripMenuItem_Click;
             // 
             // MainForm
             // 
@@ -170,5 +186,7 @@
         private ToolStripMenuItem copyToLocalToolStripMenuItem;
         private ToolStripLabel toolStripLabel2;
         private ToolStripComboBox tscbDrive;
+        private ToolStripMenuItem testCopyFileBySectionsToolStripMenuItem;
+        private ToolStripMenuItem copyLocalFileToToolStripMenuItem;
     }
 }

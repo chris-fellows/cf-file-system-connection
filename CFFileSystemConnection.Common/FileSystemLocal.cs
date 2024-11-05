@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Collections.Specialized.BitVector32;
 
 namespace CFFileSystemConnection.Common
 {
@@ -32,12 +33,19 @@ namespace CFFileSystemConnection.Common
 
         public FolderObject? GetFolder(string path, bool getFiles, bool recurseSubFolders)
         {
-            if (Directory.Exists(path))
+            if (String.IsNullOrEmpty(path))
             {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Getting folder {path} (GetFiles={getFiles}, RecurseSubFolders={recurseSubFolders}");
+
+            if (Directory.Exists(path))
+            {                
                 FolderObject? folderObject = null;                
                 try
                 {
-                    folderObject = GetFolderInfo(new DirectoryInfo(path));                    
+                    folderObject = GetFolderObject(new DirectoryInfo(path));                    
                 }
                 catch(Exception exception)
                 {
@@ -49,7 +57,8 @@ namespace CFFileSystemConnection.Common
                 }
 
                 // Get files
-                if (getFiles && (folderObject.Errors == null || !folderObject.Errors.ErrorReading))
+                if (getFiles && 
+                    (folderObject.Errors == null || !folderObject.Errors.ErrorReading))
                 {
                     try
                     {
@@ -69,8 +78,8 @@ namespace CFFileSystemConnection.Common
                     {
                         try
                         {
-                            var subFolderObject = GetFolder(subFolder, getFiles, recurseSubFolders);
-                            //folderObject.Items.Add(subFolderObject!);
+                            if (folderObject.Folders == null) folderObject.Folders = new();
+                            var subFolderObject = GetFolder(subFolder, getFiles, recurseSubFolders);                            
                             folderObject.Folders.Add(subFolderObject);
                         }
                         catch(Exception exception)
@@ -96,30 +105,39 @@ namespace CFFileSystemConnection.Common
                         if (folderObject.Errors == null) folderObject.Errors = new();
                         folderObject.Errors.ErrorReadingSubFolders = true;
                     }
-
-                    if (subFolders.Any())
+                    
+                    foreach (var subFolder in subFolders)
                     {
-                        foreach (var subFolder in subFolders)
-                        {
-                            var subFolderObject = GetFolder(subFolder, false, false);
-                            folderObject.Folders.Add(subFolderObject!);
-                        }
-                    }
+                        if (folderObject.Folders == null) folderObject.Folders = new();
+                        var subFolderObject = GetFolderObject(new DirectoryInfo(subFolder));
+                        folderObject.Folders.Add(subFolderObject);
+                    }                    
                 }
 
                 return folderObject;
-            }
+            }            
 
             return null;           
         }
         
         public FileObject? GetFile(string path)
         {
+            if (String.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
             return GetFileObject(path);
         }
 
         private static List<FileObject> GetFiles(string path)
         {
+            if (String.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+
             var fileObjects = new List<FileObject>();
 
             if (Directory.Exists(path))
@@ -157,7 +175,7 @@ namespace CFFileSystemConnection.Common
             return null;
         }
 
-        private static FolderObject GetFolderInfo(DirectoryInfo directoryInfo)
+        private static FolderObject GetFolderObject(DirectoryInfo directoryInfo)
         {            
             return new FolderObject()
             {
@@ -167,14 +185,113 @@ namespace CFFileSystemConnection.Common
             };
         }
 
-        public byte[]? GetFileContent(string path)
+        //public byte[]? GetFileContent(string path)
+        //{
+        //    if (File.Exists(path))
+        //    {                
+        //        return File.ReadAllBytes(path);
+        //    }
+
+        //    return null;
+        //}
+
+        public void GetFileContentBySection(string path, int sectionBytes, Action<byte[], bool> actionSection)
         {
-            if (File.Exists(path))
+            if (String.IsNullOrEmpty(path))
             {
-                return File.ReadAllBytes(path);
+                throw new ArgumentNullException(nameof(path));
+            }
+            if (sectionBytes <= 500)     // Only allow reasonable range
+            {
+                throw new ArgumentOutOfRangeException(nameof(sectionBytes));
             }
 
-            return null;
+            if (File.Exists(path))
+            {                
+                using (var streamReader = new BinaryReader(File.OpenRead(path)))
+                {                    
+                    var section = new byte[0];
+                    do
+                    {
+                        // Read section
+                        section = streamReader.ReadBytes(sectionBytes);
+                        
+                        // Return action
+                        actionSection(section,
+                                     (streamReader.BaseStream.Position < streamReader.BaseStream.Length));  // IsMore
+
+                        Thread.Yield();
+                    } while (streamReader.BaseStream.Position < streamReader.BaseStream.Length);
+                }
+            }            
+        }
+
+        public void WriteFileContentBySection(FileObject fileObject, Func<Tuple<byte[], bool>> getSectionFunction)
+        {            
+            try
+            {
+                using (var writer = new BinaryWriter(File.OpenWrite(fileObject.Path)))
+                {
+                    var isMore = true;
+                    while (isMore)
+                    {
+                        // Get next section
+                        var sectionData = getSectionFunction();
+
+                        // Write section
+                        writer.Write(sectionData.Item1);
+
+                        // Check if more data
+                        isMore = sectionData.Item2;
+
+                        Thread.Yield();
+                    }
+                    
+                    writer.Flush();
+                }
+            }
+            catch (Exception exception)
+            {
+                if (File.Exists(fileObject.Path)) File.Delete(fileObject.Path);
+            }
+        }
+
+        public void DeleteFile(string path)
+        {            
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        public void DeleteFolder(string path)
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, true);
+        }
+
+        public void MoveFile(string oldPath, string newPath)
+        {
+            if (!File.Exists(oldPath))
+            {
+                throw new FileNotFoundException(oldPath);
+            }
+            if (File.Exists(newPath))
+            {
+                throw new IOException("Cannot move file because new file already exists");
+            }
+
+            File.Move(oldPath, newPath);
+        }
+
+        public void MoveFolder(string oldPath, string newPath)
+        {
+            if (!Directory.Exists(oldPath))
+            {
+                throw new IOException("Folder does not exist");
+            }
+            if (File.Exists(newPath))
+            {
+                throw new IOException("Cannot move folder because new folder already exists");
+            }
+
+            Directory.Move(oldPath, newPath);
         }
     }
 }

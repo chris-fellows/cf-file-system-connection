@@ -12,7 +12,7 @@ namespace CFFileSystemConnection.MessageConverters
             var connectionMessage = new ConnectionMessage()
             {
                 Id = getDrivesRequest.Id,
-                TypeId = MessageTypeIds.GetDrivesRequest,
+                TypeId = getDrivesRequest.TypeId,
                 Parameters = new List<ConnectionMessageParameter>()
                 {
                    new ConnectionMessageParameter()

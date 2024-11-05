@@ -26,5 +26,10 @@ namespace CFFileSystemConnection.Models
         /// User roles
         /// </summary>
         public List<UserRoles> Roles { get; set; } = new List<UserRoles>();
+
+        /// <summary>
+        /// User permissions
+        /// </summary>
+        public UserPermissions Permissions { get; set; } = new UserPermissions();
     }
 }

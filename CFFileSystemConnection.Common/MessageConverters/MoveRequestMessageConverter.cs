@@ -1,6 +1,5 @@
 ﻿using CFConnectionMessaging.Interfaces;
 using CFConnectionMessaging.Models;
-using CFFileSystemConnection.Constants;
 using CFFileSystemConnection.Models;
 using System;
 using System.Collections.Generic;
@@ -10,42 +9,48 @@ using System.Threading.Tasks;
 
 namespace CFFileSystemConnection.MessageConverters
 {
-    public class GetFileContentRequestMessageConverter : IExternalMessageConverter<GetFileContentRequest>
+    public class MoveRequestMessageConverter : IExternalMessageConverter<MoveRequest>
     {
-        public ConnectionMessage GetConnectionMessage(GetFileContentRequest getFileContentRequest)
+        public ConnectionMessage GetConnectionMessage(MoveRequest moveRequest)
         {
             var connectionMessage = new ConnectionMessage()
             {
-                Id = getFileContentRequest.Id,
-                TypeId = getFileContentRequest.TypeId,
+                Id = moveRequest.Id,
+                TypeId = moveRequest.TypeId,
                 Parameters = new List<ConnectionMessageParameter>()
                 {
                    new ConnectionMessageParameter()
                    {
                        Name = "SecurityKey",
-                       Value = getFileContentRequest.SecurityKey
+                       Value = moveRequest.SecurityKey
                    },
                    new ConnectionMessageParameter()
                    {
-                       Name = "Path",
-                       Value = getFileContentRequest.Path
+                       Name = "OldPath",
+                       Value = moveRequest.OldPath
                    },
+                   new ConnectionMessageParameter()
+                   {
+                       Name = "NewPath",
+                       Value = moveRequest.NewPath
+                   }
                 }
             };
             return connectionMessage;
         }
 
-        public GetFileContentRequest GetExternalMessage(ConnectionMessage connectionMessage)
+        public MoveRequest GetExternalMessage(ConnectionMessage connectionMessage)
         {
-            var getFileContentRequest = new GetFileContentRequest()
+            var moveRequest = new MoveRequest()
             {
                 Id = connectionMessage.Id,
                 TypeId = connectionMessage.TypeId,
                 SecurityKey = connectionMessage.Parameters.First(p => p.Name == "SecurityKey").Value,
-                Path = connectionMessage.Parameters.First(p => p.Name == "Path").Value
+                OldPath = connectionMessage.Parameters.First(p => p.Name == "OldPath").Value,
+                NewPath = connectionMessage.Parameters.First(p => p.Name == "NewPath").Value
             };
 
-            return getFileContentRequest;
+            return moveRequest;
         }
     }
 }
