@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             toolStrip1 = new ToolStrip();
             toolStripLabel1 = new ToolStripLabel();
             tscbConnection = new ToolStripComboBox();
@@ -42,6 +43,7 @@
             copyToLocalToolStripMenuItem = new ToolStripMenuItem();
             testCopyFileBySectionsToolStripMenuItem = new ToolStripMenuItem();
             copyLocalFileToToolStripMenuItem = new ToolStripMenuItem();
+            imageList1 = new ImageList(components);
             toolStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -116,8 +118,11 @@
             // tvwFolder
             // 
             tvwFolder.Dock = DockStyle.Fill;
+            tvwFolder.ImageIndex = 0;
+            tvwFolder.ImageList = imageList1;
             tvwFolder.Location = new Point(0, 0);
             tvwFolder.Name = "tvwFolder";
+            tvwFolder.SelectedImageIndex = 0;
             tvwFolder.Size = new Size(414, 673);
             tvwFolder.TabIndex = 0;
             tvwFolder.BeforeExpand += tvwFolder_BeforeExpand;
@@ -127,7 +132,7 @@
             // 
             cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem, testCopyFileBySectionsToolStripMenuItem, copyLocalFileToToolStripMenuItem });
             cmsFolder.Name = "cmsFolder";
-            cmsFolder.Size = new Size(205, 92);
+            cmsFolder.Size = new Size(205, 70);
             // 
             // copyToLocalToolStripMenuItem
             // 
@@ -149,6 +154,13 @@
             copyLocalFileToToolStripMenuItem.Size = new Size(204, 22);
             copyLocalFileToToolStripMenuItem.Text = "Copy local file to";
             copyLocalFileToToolStripMenuItem.Click += copyLocalFileToToolStripMenuItem_Click;
+            // 
+            // imageList1
+            // 
+            imageList1.ColorDepth = ColorDepth.Depth32Bit;
+            imageList1.ImageStream = (ImageListStreamer)resources.GetObject("imageList1.ImageStream");
+            imageList1.TransparentColor = Color.Transparent;
+            imageList1.Images.SetKeyName(0, "folderdocuments.ico");
             // 
             // MainForm
             // 
@@ -188,5 +200,6 @@
         private ToolStripComboBox tscbDrive;
         private ToolStripMenuItem testCopyFileBySectionsToolStripMenuItem;
         private ToolStripMenuItem copyLocalFileToToolStripMenuItem;
+        private ImageList imageList1;
     }
 }

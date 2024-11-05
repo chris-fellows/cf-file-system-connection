@@ -1,18 +1,19 @@
 # cf-file-system-connection
 
 Class library for easily accessing remote file system via a TCP connection without having to write
-any socket level code. An example would be a PC application that displays a file explorer for
-managing files or backing up files on a mobile phone.
+any socket level code. An example would be a PC application that displays a file explorer for managing
+files or backing up files on a mobile phone.
 
 There would typically be two applications:
 1) The application that manages the remote file system. It uses the IFileSystem interface.
 2) The application that provides it's file system. It uses the FileSystemRequestHandler class.
 
 WARNING: If you provide remote access to the file system then you should be careful about protecting
-access to files. Requests must provide a security key.
+access to files. Requests must provide a security key. The mechanism is really only intended for
+management of particular folders (E.g. Music, photos etc)
 
-CFFileSystemConnection.Common
------------------------------
+CFFileSystemConnection.Common (Class library)
+---------------------------------------------
 This class library provides the components for managing a local or remote file system.
 
 It makes uses of the CFConnectionMessaging.Common library which implements sending & receiving of
@@ -33,28 +34,36 @@ FileObject							: File details.
 FileSystemRequestHandler			: Handles request messages received via TCP.
 IUserService						: Service that stores users and associated security keys.
 
-CFFileSystemHandler
--------------------
+CFFileSystemHandler (Console)
+-----------------------------
 A sample console application that demonstrates the handler that owns the file system and can process
 messages for the file system. E.g. Get folder details.
 
 The application hosts an instance of the FileSystemRequestHandler class.
 
-CFFileSystemManager
--------------------
+CFFileSystemManager (WinForms)
+------------------------------
 A WinForms application that uses the remote connection to manage the remote file system.
 
 The application uses the FileSystemConnection (IFileSystem) class to access the remote file system.
 
 The CFFileSystemHandler application can be used for providing the remote file system.
 
-CFFileSystemMobile
-------------------
-A .NET Maui application that allows the file system to be managed remotely.
+CFFileSystemMobile (.NET Maui)
+------------------------------
+A .NET Maui application that allows the file system to be managed remotely without having to connect the 
+phone to a computer via USB cable.
 
 The application hosts an instance of the FileSystemRequestHandler class.
 
-Security
---------
+Users & Security
+----------------
 Access is controlled by specifying a security key in the request message. The security key relates to a 
-user which has a list of roles defined.
+user. Users are managed via the IUserService interface.
+
+For each user then it's possible to set the following settings:
+1) Which roles that the user has.
+2) Which folder paths that the user has access to. If not set then the user can access all paths.
+
+It is strongly recommended that security is as strict as possible to limit which paths that the user can
+access and whether they can read/write to the file system.

@@ -27,6 +27,8 @@ namespace CFFileSystemMobile
             // Register pages for DI
             builder.Services.AddSingleton<MainPage>();
             builder.Services.AddSingleton<MainPageModel>();
+            builder.Services.AddSingleton<UserSettingsPage>();
+            builder.Services.AddSingleton<UserSettingsPageModel>();
 
             builder.Services.AddSingleton<CFFileSystemConnection.Interfaces.IFileSystem, FileSystemLocal>();
             builder.Services.AddSingleton<CFFileSystemConnection.Interfaces.IUserService>((scope) =>

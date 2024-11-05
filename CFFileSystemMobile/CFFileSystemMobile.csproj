@@ -65,4 +65,20 @@
 	  <ProjectReference Include="..\CFFileSystemConnection.Common\CFFileSystemConnection.Common.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <MauiXaml Update="UserSettingsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="NewFolder\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="UserSettingsPage.xaml.cs">
+	    <DependentUpon>UserSettingsPage.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
 </Project>

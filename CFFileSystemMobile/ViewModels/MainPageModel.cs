@@ -121,7 +121,7 @@ namespace CFFileSystemMobile.ViewModels
         }
 
         private void StopListening(object parameter)
-        {
+        {            
             _fileSystemRequestHandler.StopListening();
 
             OnPropertyChanged(nameof(StartListeningEnabled));

@@ -18,6 +18,8 @@ namespace CFFileSystemManager
         private IFileSystem _fileSystem;
         private IFileSystem _fileSystemLocal = new FileSystemLocal();
 
+        private const int _folderIconIndex = 0;
+
         /// <summary>
         /// Size of file sections to transfer when reading or writing files
         /// </summary>
@@ -222,7 +224,7 @@ namespace CFFileSystemManager
             tvwFolder.Nodes.Clear();
 
             // Add root node
-            var rootNode = tvwFolder.Nodes.Add("/", "/");
+            var rootNode = tvwFolder.Nodes.Add("/", "/", _folderIconIndex);            
             rootNode.Tag = folder;
 
             // Add sub-folders
@@ -245,7 +247,7 @@ namespace CFFileSystemManager
         /// <param name="folder"></param>
         private void AddFolderToTree(TreeNode parentNode, FolderObject folder)
         {
-            var subFolderNode = parentNode.Nodes.Add($"Folder.{folder.Name}", folder.Name);
+            var subFolderNode = parentNode.Nodes.Add($"Folder.{folder.Name}", folder.Name, _folderIconIndex);
             subFolderNode.Tag = folder;
             subFolderNode.ContextMenuStrip = cmsFolder;
 
