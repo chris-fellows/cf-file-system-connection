@@ -1,9 +1,6 @@
-﻿using Android.Content;
-using Android.Net;
-using Android.Net.Wifi;
-using CFFileSystemConnection;
-using CFFileSystemConnection.Common;
+﻿using CFFileSystemConnection.Common;
 using CFFileSystemConnection.Interfaces;
+using CFFileSystemMobile.Interfaces;
 using System.ComponentModel;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -13,7 +10,7 @@ using System.Windows.Input;
 namespace CFFileSystemMobile.ViewModels
 {
     /// <summary>
-    /// Model to MainPage
+    /// Model for MainPage. User can start or stop listening for messages from remote connection
     /// </summary>
     public class MainPageModel : INotifyPropertyChanged
     {
@@ -22,30 +19,49 @@ namespace CFFileSystemMobile.ViewModels
         public void OnPropertyChanged([CallerMemberName] string name = "") =>
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+        //private readonly ICurrentState _currentState;
         private readonly CFFileSystemConnection.Interfaces.IFileSystem _fileSystem;
         private readonly CFFileSystemConnection.Interfaces.IUserService _userService;
 
-        private readonly FileSystemRequestHandler _fileSystemRequestHandler;        
+        private readonly FileSystemRequestHandler _fileSystemRequestHandler;
 
-        public MainPageModel(CFFileSystemConnection.Interfaces.IFileSystem fileSystem,
+        public MainPageModel(ICurrentState currentState,
+                            CFFileSystemConnection.Interfaces.IFileSystem fileSystem,
                             CFFileSystemConnection.Interfaces.IUserService userService)
-        {
+        {            
             _fileSystem = fileSystem;
             _userService = userService;            
 
             // Bind commands
-            StartListeningCommand = new Command(StartListening);
-            StopListeningCommand = new Command(StopListening);
+            StartStopListeningCommand = new Command(StartStopListening);          
 
             // Create file system request handler
             _fileSystemRequestHandler = new FileSystemRequestHandler(fileSystem, userService);
             _fileSystemRequestHandler.OnStatusMessage += (status) =>
             {
-                Status = status;
+                //Status = status;
             };
 
-            StringBuilder debug = new StringBuilder("");          
-            DebugMessage = debug.ToString();               
+            // Set handler for client connected
+            _fileSystemRequestHandler.OnClientConnected += (endpoint) =>
+            {
+                ConnectionStatusText = $"Connected ({endpoint.Ip}:{endpoint.Port})";
+            };
+
+            // Set handler for client disconnected
+            _fileSystemRequestHandler.OnClientDisconnected += (endpoint) =>
+            {
+                ConnectionStatusText = "Disconnected";
+            };
+
+            // Handle user updated. E.g. Security key, permissions etc
+            currentState.Events.OnUserUpdated += (user) =>
+            {
+                _fileSystemRequestHandler.HandleUserUpdated(user);
+            };
+         
+            // Set default connection status
+            ConnectionStatusText = "Disconnected";
         }
 
         private string _debugMessage;
@@ -60,6 +76,20 @@ namespace CFFileSystemMobile.ViewModels
             }
         }
 
+        /// <summary>
+        /// Connection status text for remote endpoint (E.g. PC)
+        /// </summary>
+        private string _connectionStatusText;
+        public string ConnectionStatusText
+        {
+            get { return _connectionStatusText; }
+            set
+            {
+                _connectionStatusText = value;
+
+                OnPropertyChanged(nameof(ConnectionStatusText));
+            }
+        }
 
         public string LocalIPList
         {
@@ -93,39 +123,34 @@ namespace CFFileSystemMobile.ViewModels
         }
 
         /// <summary>
-        /// Command to start listening
+        /// Command to start/stop listening
         /// </summary>
-        public ICommand StartListeningCommand { get; set; }
+        public ICommand StartStopListeningCommand { get; set; }
 
-        /// <summary>
-        /// Command to stop listening
-        /// </summary>
-        public ICommand StopListeningCommand { get; set; }
-
-        /// <summary>
-        /// Whether start listening command is enabled
-        /// </summary>
-        public bool StartListeningEnabled => !_fileSystemRequestHandler.IsListening;
-
-        /// <summary>
-        /// Whether stop listening command is enable
-        /// </summary>
-        public bool StopListeningEnabled => _fileSystemRequestHandler.IsListening;
-
-        private void StartListening(object parameter)
+        public string ListeningButtonText
         {
-            _fileSystemRequestHandler.StartListening(Convert.ToInt32(LocalPort));
-
-            OnPropertyChanged(nameof(StartListeningEnabled));
-            OnPropertyChanged(nameof(StopListeningEnabled));
+            get { return _fileSystemRequestHandler.IsListening ? 
+                            "Stop Listening" : "Start Listening"; }
         }
 
-        private void StopListening(object parameter)
-        {            
-            _fileSystemRequestHandler.StopListening();
+        public bool IsNotListening => !_fileSystemRequestHandler.IsListening;
 
-            OnPropertyChanged(nameof(StartListeningEnabled));
-            OnPropertyChanged(nameof(StopListeningEnabled));
+        public bool IsStartStopListeningEnabled => !String.IsNullOrEmpty(LocalPort);    
+
+        private void StartStopListening(object parameter)
+        {
+            if (_fileSystemRequestHandler.IsListening)   // Stop listening
+            {
+                _fileSystemRequestHandler.StopListening();
+            }
+            else     // Start listening
+            {
+                _fileSystemRequestHandler.StartListening(Convert.ToInt32(LocalPort));
+            }
+
+            OnPropertyChanged(nameof(IsNotListening));
+            OnPropertyChanged(nameof(IsStartStopListeningEnabled));
+            OnPropertyChanged(nameof(ListeningButtonText));            
         }
 
         private string _localPort = "11000"; // Default
@@ -137,19 +162,20 @@ namespace CFFileSystemMobile.ViewModels
                 _localPort = value;
 
                 OnPropertyChanged(nameof(LocalPort));
+                OnPropertyChanged(nameof(IsStartStopListeningEnabled));
             }
         }
 
-        private string _status = String.Empty;
-        public string Status
-        {
-            get { return _status; }
-            set
-            {
-                _status = value;
+        //private string _status = String.Empty;
+        //public string Status
+        //{
+        //    get { return _status; }
+        //    set
+        //    {
+        //        _status = value;
 
-                OnPropertyChanged(nameof(Status));
-            }
-        }
+        //        OnPropertyChanged(nameof(Status));
+        //    }
+        //}
     }
 }

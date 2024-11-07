@@ -1,8 +1,9 @@
 ﻿using CFFileSystemConnection.Enums;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Models;
+using System.ComponentModel;
 
-namespace CFFileSystemHandler
+namespace CFFileSystemHandler.Utilities
 {
     internal static class InternalUtilities
     {
@@ -32,7 +33,7 @@ namespace CFFileSystemHandler
             {
                 Id = Guid.NewGuid().ToString(),
                 Name = "Read & Write",
-                Roles = new List<UserRoles>() { UserRoles.FileSystemRead, UserRoles.FileSystemWrite },                
+                Roles = new List<UserRoles>() { UserRoles.FileSystemRead, UserRoles.FileSystemWrite },
                 SecurityKey = "sa82j302akspaoihejb7s*aAZ1s29",
                 Permissions = new UserPermissions()
                 {

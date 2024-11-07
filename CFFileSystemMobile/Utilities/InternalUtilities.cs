@@ -1,17 +1,13 @@
 ﻿using CFFileSystemConnection.Enums;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Models;
-using System.ComponentModel;
 
 namespace CFFileSystemMobile.Utilities
 {
     internal class InternalUtilities
     {
         /// <summary>
-        /// Creates users
-        /// 
-        /// NOTE: UserPermissions can specify a list of paths that are allowed. By default then users have access to
-        /// all paths.
+        /// Creates users        
         /// </summary>
         /// <param name="userService"></param>
         public static void CreateUsers(IUserService userService)
@@ -24,7 +20,7 @@ namespace CFFileSystemMobile.Utilities
                 SecurityKey = "d8ahs9b2ik3h49shIaAB2a9ds0338dhdh",
                 Permissions = new UserPermissions()
                 {
-                    Paths = null   // All paths
+                    Paths = new List<string>()
                 }
             };
             userService.Add(user1);
@@ -37,21 +33,10 @@ namespace CFFileSystemMobile.Utilities
                 SecurityKey = "sa82j302akspaoihejb7s*aAZ1s29",
                 Permissions = new UserPermissions()
                 {
-                    Paths = null    // All paths
+                    Paths = new List<string>()
                 }
             };
             userService.Add(user2);
-        }
-
-        public static string GetEnumDescription(Enum value)
-        {
-            // variables  
-            var enumType = value.GetType();
-            var field = enumType.GetField(value.ToString());
-            var attributes = field.GetCustomAttributes(typeof(DescriptionAttribute), false);
-
-            // return  
-            return attributes.Length == 0 ? value.ToString() : ((DescriptionAttribute)attributes[0]).Description;
         }
     }
 }

@@ -1,11 +1,18 @@
-﻿namespace CFFileSystemConnection.Enums
+﻿using System.ComponentModel;
+
+namespace CFFileSystemConnection.Enums
 {
     public enum ResponseErrorCodes
     {
-        Unknown,        
-        DirectoryDoesNotExist,
+        [Description("Unknown")]
+        Unknown,
+        [Description("Directory does not exist")]
+        DirectoryDoesNotExist,        
+        [Description("File does not exist")]
         FileDoesNotExist,
-        FileSystemError,
-        PermissionDenied    // Invalid security key
+        [Description("File system error")]
+        FileSystemError,        
+        [Description("Permission denied")]
+        PermissionDenied   
     }
 }

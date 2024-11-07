@@ -1,6 +1,7 @@
 ﻿using CFFileSystemConnection.Enums;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Models;
+using CFFileSystemMobile.Interfaces;
 using CFFileSystemMobile.Models;
 using CFFileSystemMobile.Utilities;
 using System;
@@ -14,6 +15,9 @@ using System.Windows.Input;
 
 namespace CFFileSystemMobile.ViewModels
 {
+    /// <summary>
+    /// Model for UserSettingsPage. Allows user to configure user settings (Security key, permissions etc)
+    /// </summary>
     public class UserSettingsPageModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -21,19 +25,32 @@ namespace CFFileSystemMobile.ViewModels
         public void OnPropertyChanged([CallerMemberName] string name = "") =>
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+        private readonly ICurrentState _currentState;
         private readonly IUserService _userService;        
 
         public ICommand DeleteUserCommand { get; set; }
 
         public ICommand SaveUserCommand { get; set; }
 
-        public UserSettingsPageModel(IUserService userService)
+        public ICommand NewSecurityKeyCommand { get; set; }
+
+        public ICommand CancelCommand { get; set; }
+
+
+        private const int _securityKeyLength = 25;
+
+
+        public UserSettingsPageModel(ICurrentState currentState,
+                                     IUserService userService)
         {
+            _currentState = currentState;
             _userService = userService;
 
             // Set commands            
             DeleteUserCommand = new Command(DeleteUser);
             SaveUserCommand = new Command(SaveUser);
+            NewSecurityKeyCommand = new Command(NewSecurityKey);
+            CancelCommand = new Command(Cancel);
 
             LoadUsers();
         }
@@ -59,10 +76,35 @@ namespace CFFileSystemMobile.ViewModels
             SelectedUser = String.IsNullOrEmpty(selectedUserId) ?
                         users[0] : users.First(u => u.Id == selectedUserId);
         }
+
+        private void NewSecurityKey(object parameter)
+        {
+            var securityKey = new StringBuilder("");
+            var random = new Random();
+            while (securityKey.Length < _securityKeyLength)
+            {
+                Char character = (Char)random.Next(0, 127);
+                if (Char.IsDigit(character) ||
+                    Char.IsLetter(character))
+                {
+                    securityKey.Append(character);
+                }
+            }
+
+            SecurityKey = securityKey.ToString();
+        }
+
+        private void Cancel(object parameter)
+        {
+            LoadUsers(SelectedUser?.Id);
+        }
       
         private void DeleteUser(object parameter)
         {
             _userService.Delete(SelectedUser.Id);
+
+            // Notify user updated
+            _currentState.Events.RaiseOnUserUpdated(SelectedUser);
 
             LoadUsers();
         }
@@ -73,13 +115,8 @@ namespace CFFileSystemMobile.ViewModels
             SelectedUser.Roles = this.UserRoles.Where(ur => ur.Enabled)
                                     .Select(ur => ur.Value).ToList();
 
-            // Set paths that user can access
-            SelectedUser.Permissions.Paths = null;
-            var enabledSettings = DriveSettings.Where(ds => ds.Enabled).ToList();
-            if (enabledSettings.Any())
-            {
-                SelectedUser.Permissions.Paths = enabledSettings.Select(s => s.Value).ToList();
-            }
+            // Set paths that user can access            
+            SelectedUser.Permissions.Paths = DriveSettings.Where(ds => ds.Enabled).Select(ds => ds.Value).ToList();            
 
             if (String.IsNullOrEmpty(SelectedUser.Id))   // New user
             {
@@ -91,16 +128,19 @@ namespace CFFileSystemMobile.ViewModels
                 _userService.Update(SelectedUser);                
             }
 
+            // Notify user updated
+            _currentState.Events.RaiseOnUserUpdated(SelectedUser);
+
             // Refresh users
             LoadUsers(SelectedUser.Id);
         }
 
-        public string UserName
+        public string? UserName
         {
-            get { return _selectedUser.Name; }
+            get { return _selectedUser?.Name; }
             set
             {
-                _selectedUser.Name = value;
+                if (_selectedUser != null) _selectedUser.Name = value;
 
                 OnPropertyChanged(nameof(UserName));
                 OnPropertyChanged(nameof(IsSaveEnabled));
@@ -110,12 +150,12 @@ namespace CFFileSystemMobile.ViewModels
         /// <summary>
         /// Security key for user
         /// </summary>
-        public string SecurityKey
+        public string? SecurityKey
         {
-            get { return _selectedUser.SecurityKey; }
+            get { return _selectedUser?.SecurityKey; }
             set
             {
-                _selectedUser.SecurityKey = value;
+                if (_selectedUser != null) _selectedUser.SecurityKey = value;
 
                 OnPropertyChanged(nameof(SecurityKey));
                 OnPropertyChanged(nameof(IsSaveEnabled));
@@ -139,7 +179,15 @@ namespace CFFileSystemMobile.ViewModels
                 OnPropertyChanged(nameof(IsDeleteEnabled));
                 OnPropertyChanged(nameof(IsSaveEnabled));
 
-                LoadUserSettings(_selectedUser);
+                if (_selectedUser == null)
+                {
+                    UserRoles = new List<SelectableItem<UserRoles>>();
+                    DriveSettings = new List<SelectableItem<string>>();
+                }
+                else
+                {
+                    LoadUserSettings(_selectedUser);
+                }
             }
         }
 
@@ -149,31 +197,35 @@ namespace CFFileSystemMobile.ViewModels
         /// <param name="user"></param>
         private void LoadUserSettings(User user)
         {
-            // Display user roles
+            UserRoles = new List<SelectableItem<UserRoles>>();
+            DriveSettings = new List<SelectableItem<string>>();
+
+            // Load user roles
             var userRoles = new List<SelectableItem<UserRoles>>();
             foreach (UserRoles userRole in Enum.GetValues(typeof(UserRoles)))
             {
                 var userRoleItem = new SelectableItem<UserRoles>()
                 {
-                    Name = InternalUtilities.GetEnumDescription(userRole),
+                    Name = EnumUtilities.GetEnumDescription(userRole),
                     Value = userRole,
                     Enabled = user.Roles.Contains(userRole)
                 };
                 userRoles.Add(userRoleItem);
             }
-
+            
             UserRoles = userRoles.OrderBy(ur => ur.Name).ToList();
 
-            // Display drive settings
+            // Load drive settings
             var driveSettings = new List<SelectableItem<string>>();
-            foreach (var drive in DriveInfo.GetDrives().Where(d => d.DriveType != DriveType.Ram))
+            foreach (var drive in DriveInfo.GetDrives()
+                    .Where(d => d.DriveType != DriveType.Ram))
             {
                 var driveSetting = new SelectableItem<string>()
                 {
                     Name = drive.Name,
                     Value = drive.RootDirectory.ToString(),
-                    Enabled = _selectedUser.Permissions.Paths != null &&
-                            _selectedUser.Permissions.Paths.Contains(drive.RootDirectory.ToString())
+                    Enabled = user.Permissions.Paths != null &&
+                            user.Permissions.Paths.Contains(drive.RootDirectory.ToString())
                 };
                 driveSettings.Add(driveSetting);
             }
@@ -184,14 +236,16 @@ namespace CFFileSystemMobile.ViewModels
         /// <summary>
         /// Whether user can be deleted
         /// </summary>
-        public bool IsDeleteEnabled => SelectedUser != null && !String.IsNullOrEmpty(SelectedUser.Id);
+        public bool IsDeleteEnabled => SelectedUser != null && 
+                            !String.IsNullOrEmpty(SelectedUser.Id);
 
         /// <summary>
-        /// Whether user can be saved
+        /// Whether user can be saved. Can save even if no paths set.
         /// </summary>
-        public bool IsSaveEnabled => SelectedUser != null && 
+        public bool IsSaveEnabled => SelectedUser != null &&
                             !String.IsNullOrEmpty(SelectedUser.Name) &&
-                            !String.IsNullOrEmpty(SelectedUser.SecurityKey);
+                            !String.IsNullOrEmpty(SelectedUser.SecurityKey) &&
+                            SelectedUser.SecurityKey.Length > 0;    // _securityKeyLength;   // TODO: Set min length
 
         /// <summary>
         /// User list

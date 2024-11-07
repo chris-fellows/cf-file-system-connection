@@ -9,7 +9,7 @@
             Spacing="25">
             <Image
                 Source="dotnet_bot.png"
-                HeightRequest="185"
+                HeightRequest="60"
                 Aspect="AspectFit"
                 SemanticProperties.Description="dot net bot in a race car number eight" />
 
@@ -19,23 +19,20 @@
             <Label Text="Listening port:"/>
             <Entry
                 x:Name="LocalPortEntry"
+                Keyboard="Numeric"
+                IsEnabled="{Binding IsNotListening, Mode=OneWay}"
                 Text="{Binding LocalPort, Mode=TwoWay}" />
+            
+                <Button
+                    x:Name="StartStopListeningBtn"
+                    WidthRequest="140"
+                    Text="{Binding ListeningButtonText, Mode=OneWay}"                
+                    IsEnabled="{Binding IsStartStopListeningEnabled}"
+                    Command="{Binding StartStopListeningCommand}"/>
 
-            <Button
-                x:Name="StartListeningBtn"
-                Text="Start Listening"
-                IsEnabled="{Binding StartListeningEnabled}"
-                Command="{Binding StartListeningCommand}"/>
-
-            <Button
-                x:Name="StopListeningBtn"
-                Text="Stop Listening"
-                IsEnabled="{Binding StopListeningEnabled}"
-                Command="{Binding StopListeningCommand}"/>
-
-            <Label
-                x:Name="StatusLabel"
-                Text="{Binding Status}"/>
+                <Label
+                x:Name="ConnectionStatusLabel"
+                Text="{Binding ConnectionStatusText, Mode=OneWay}"/>
 
             <Label
      x:Name="DebugLabel"

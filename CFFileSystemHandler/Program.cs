@@ -4,6 +4,7 @@ using CFFileSystemConnection.Service;
 using CFFileSystemHandler;
 using CFFileSystemHandler.Interfaces;
 using CFFileSystemHandler.Services;
+using CFFileSystemHandler.Utilities;
 
 // Create logging service
 ILoggingService loggingService = new CSVLoggingService(Path.Combine(Environment.CurrentDirectory, "Logs"));
@@ -17,21 +18,21 @@ try
     InternalUtilities.CreateUsers(userService);
 
     // Start listening
-    const int port = 11000;      
+    const int port = 11000;
     var server = new Server(loggingService, userService);
     server.StartListening(port);
-
-    loggingService.Log($"Listening (Port {port})");
 
     // Run until cancelled
     var cancellationTokenSource = new CancellationTokenSource();    // Currently no wait to cancel cleanly
     server.Run(cancellationTokenSource.Token);
-
-    loggingService.Log("Terminating File System Handler");
 }
-catch(Exception exception)
+catch (Exception exception)
 {
     loggingService.Log($"Exception: {exception.Message}");
     loggingService.Log($"Stack: {exception.StackTrace}");
+}
+finally
+{
+    loggingService.Log("Terminating File System Handler");
 }
 

@@ -7,8 +7,8 @@ namespace CFFileSystemConnection.Models
     public class UserPermissions
     {
         /// <summary>
-        /// Paths that user can access. null=Any. Empty=None.
+        /// Paths that user can access
         /// </summary>
-        public List<string>? Paths { get; set; }
+        public List<string> Paths { get; set; } = new List<string>();
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CFFileSystemConnection.Common;
-using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Service;
+using CFFileSystemMobile.Interfaces;
+using CFFileSystemMobile.Models;
 using CFFileSystemMobile.Utilities;
 using CFFileSystemMobile.ViewModels;
 using Microsoft.Extensions.Logging;
@@ -30,6 +31,7 @@ namespace CFFileSystemMobile
             builder.Services.AddSingleton<UserSettingsPage>();
             builder.Services.AddSingleton<UserSettingsPageModel>();
 
+            builder.Services.AddSingleton<ICurrentState, CurrentState>();
             builder.Services.AddSingleton<CFFileSystemConnection.Interfaces.IFileSystem, FileSystemLocal>();
             builder.Services.AddSingleton<CFFileSystemConnection.Interfaces.IUserService>((scope) =>
             {

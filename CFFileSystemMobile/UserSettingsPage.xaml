@@ -15,21 +15,31 @@
 
             <HorizontalStackLayout HorizontalOptions="Center">
                 <Button Text="Save User"
+                    WidthRequest="140"
                     IsEnabled="{Binding IsSaveEnabled, Mode=OneWay}"
                     Command="{Binding SaveUserCommand}" />
 
                 <Button Text="Delete User"
+                    WidthRequest="140"
                     IsEnabled="{Binding IsDeleteEnabled, Mode=OneWay}"
                     Command="{Binding DeleteUserCommand}" />
+
+                <Button Text="Cancel"
+                    WidthRequest="140"                    
+                    Command="{Binding CancelCommand}" />
             </HorizontalStackLayout>
 
             <Label Text="User Name" />
             <Entry Text="{Binding UserName, Mode=TwoWay}" />
 
-            <Label Text="Security Key"/>
+            <Label Text="Security Key (25 characters)"/>
             <Entry Text="{Binding SecurityKey, Mode=TwoWay}"/>
 
-            <Label Text="Roles" />
+            <Button Text="New Key"
+                    WidthRequest="140"
+                    Command="{Binding NewSecurityKeyCommand}"/>
+
+            <Label Text="Roles:" />
             <CollectionView x:Name="RolesList"
                  ItemsSource="{Binding UserRoles}"                        
                  SelectionMode="None" Margin="10,0">
@@ -43,7 +53,7 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <Label Text="Drives" />
+            <Label Text="Drives Allowed:" />
             <CollectionView x:Name="DriveSettingsList"
                             ItemsSource="{Binding DriveSettings}"                        
                             SelectionMode="None" Margin="10,0">

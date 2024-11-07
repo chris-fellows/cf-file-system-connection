@@ -6,6 +6,7 @@ using CFFileSystemConnection.Enums;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
+using CFFileSystemConnection.Utilities;
 
 namespace CFFileSystemConnection.Common
 {
@@ -29,6 +30,9 @@ namespace CFFileSystemConnection.Common
 
         private readonly IUserService _userService;
 
+        private DateTimeOffset _usersLastRefreshTime = DateTimeOffset.MinValue;
+        private readonly Dictionary<string, User> _usersBySecurityKey = new Dictionary<string, User>();
+
         // Message converters
         private readonly IExternalMessageConverter<DeleteRequest> _deleteRequestConverter = new DeleteRequestMessageConverter();
         private readonly IExternalMessageConverter<DeleteResponse> _deleteResponseConverter = new DeleteResponseMessageConverter();
@@ -50,6 +54,20 @@ namespace CFFileSystemConnection.Common
 
         private readonly IExternalMessageConverter<WriteFileRequest> _writeFileRequestConverter = new WriteFileRequestMessageConverter();
         private readonly IExternalMessageConverter<WriteFileResponse> _writeFileResponseConverter = new WriteFileResponseMessageConverter();
+
+        /// <summary>
+        /// Event for client connected
+        /// </summary>
+        /// <param name="endpointInfo"></param>
+        public delegate void ClientConnected(EndpointInfo endpointInfo);
+        public event ClientConnected? OnClientConnected;
+
+        /// <summary>
+        /// Event for client disconnected
+        /// </summary>
+        /// <param name="endpointInfo"></param>
+        public delegate void ClientDisconnected(EndpointInfo endpointInfo);
+        public event ClientDisconnected? OnClientDisconnected;
 
         /// <summary>
         /// Details of a file write session. Created when we receive first request to write file X. Deleted
@@ -86,7 +104,42 @@ namespace CFFileSystemConnection.Common
             _userService = userService;
 
             _connection = new ConnectionTcp();
-            _connection.OnConnectionMessageReceived += _connection_OnConnectionMessageReceived;            
+            _connection.OnConnectionMessageReceived += _connection_OnConnectionMessageReceived;
+            _connection.OnClientConnected += _connection_OnClientConnected;
+            _connection.OnClientDisconnected += _connection_OnClientDisconnected;
+        }
+
+        /// <summary>
+        /// Handlers user updated. E.g. Security key or permissions changed
+        /// </summary>
+        /// <param name="user"></param>
+        public void HandleUserUpdated(User user)
+        {
+            _usersBySecurityKey.Clear();
+        }
+       
+        /// <summary>
+        /// Handles client connected event
+        /// </summary>
+        /// <param name="endpointInfo"></param>
+        private void _connection_OnClientConnected(EndpointInfo endpointInfo)
+        {
+           if (OnClientConnected != null)
+            {
+                OnClientConnected(endpointInfo);
+            }
+        }
+
+        /// <summary>
+        /// Handles client disconnected event
+        /// </summary>
+        /// <param name="endpointInfo"></param>
+        private void _connection_OnClientDisconnected(EndpointInfo endpointInfo)
+        {
+            if (OnClientDisconnected != null)
+            {
+                OnClientDisconnected(endpointInfo);
+            }
         }
 
         public void Dispose()
@@ -101,6 +154,27 @@ namespace CFFileSystemConnection.Common
             // Delete all temp files for active file writes
             _fileWriteSessions.ForEach(fws => fws.LastSectionReceived = DateTime.UtcNow.Subtract(TimeSpan.FromDays(10)));
             CleanUpFileWriteSessions(TimeSpan.FromMilliseconds(1));
+        }
+
+        /// <summary>
+        /// Get user by security key
+        /// </summary>
+        /// <param name="securityKey"></param>
+        /// <returns></returns>
+        private User? GetUserBySecurityKey(string securityKey)
+        {
+            // Periodically clear cache. Doesn't matter too much if we pick up stale data as the user settings won't change
+            // very often.
+            if (_usersLastRefreshTime.AddMinutes(5) <= DateTimeOffset.UtcNow)
+            {
+                _usersLastRefreshTime = DateTimeOffset.UtcNow;
+                _usersBySecurityKey.Clear();
+            }
+            if (!_usersBySecurityKey.Any())   // Cache empty, load it
+            {
+                _userService.GetAll().ForEach(user => _usersBySecurityKey.Add(user.SecurityKey, user));
+            }
+            return _usersBySecurityKey.ContainsKey(securityKey) ? _usersBySecurityKey[securityKey] : null;            
         }
 
         private void _connection_OnConnectionMessageReceived(ConnectionMessage connectionMessage, MessageReceivedInfo messageReceivedInfo)
@@ -174,14 +248,14 @@ namespace CFFileSystemConnection.Common
         /// <param name="user"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        private bool IsUserCanAccessFolder(User user, string path)
+        private static bool IsUserCanAccessFolder(User user, string path)
         {
             if (user.Permissions.Paths != null &&
                 !user.Permissions.Paths.Any(drivePath => path.StartsWith(drivePath)))
             {
-                return false;
+                return true;
             }
-            return true;
+            return false;
         }
 
         /// <summary>
@@ -209,12 +283,12 @@ namespace CFFileSystemConnection.Common
                 };
 
                 // Check permissions
-                var user = _userService.GetBySecurityKey(getDrivesRequest.SecurityKey);
+                var user = GetUserBySecurityKey(getDrivesRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemRead))   // Invalid credentials
-                {
-                    getDrivesResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getDrivesResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getDrivesResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getDrivesResponse.Response.ErrorCode);
                 }
                 else     // Valid credentials
                 {
@@ -223,10 +297,10 @@ namespace CFFileSystemConnection.Common
                         getDrivesResponse.Drives = _fileSystemLocal.GetDrives();
                         if (getDrivesResponse.Drives == null)
                         {
-                            getDrivesResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;
+                            getDrivesResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;                            
                             getDrivesResponse.Response.ErrorMessage = "No drives available";
                         }
-                        else if (user.Permissions.Paths != null)   // Exclude drives that user can't access
+                        else    // Filter drives that user can access
                         {
                             getDrivesResponse.Drives = getDrivesResponse.Drives.Where(d => IsUserCanAccessFolder(user, d.Path)).ToList();
                         }
@@ -293,17 +367,17 @@ namespace CFFileSystemConnection.Common
                 };
 
                 // Check permissions
-                var user = _userService.GetBySecurityKey(getFolderRequest.SecurityKey);
+                var user = GetUserBySecurityKey(getFolderRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemRead))   // Invalid credentials
-                {
-                    getFolderResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getFolderResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getFolderResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFolderResponse.Response.ErrorCode);
                 }
                 else if (!IsUserCanAccessFolder(user, getFolderRequest.Path))
-                {
-                    getFolderResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getFolderResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getFolderResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFolderResponse.Response.ErrorCode);
                 }
                 else     // Valid credentials
                 {
@@ -314,7 +388,7 @@ namespace CFFileSystemConnection.Common
                         if (getFolderResponse.FolderObject == null)
                         {
                             getFolderResponse.Response.ErrorCode = ResponseErrorCodes.DirectoryDoesNotExist;
-                            getFolderResponse.Response.ErrorMessage = "Directory does not exist";
+                            getFolderResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFolderResponse.Response.ErrorCode);                            
                         }
                     }
                     catch (Exception exception)
@@ -378,17 +452,17 @@ namespace CFFileSystemConnection.Common
                     }
                 };
 
-                var user = _userService.GetBySecurityKey(getFileRequest.SecurityKey);
+                var user = GetUserBySecurityKey(getFileRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemRead))   // Invalid credentials
-                {
-                    getFileResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getFileResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getFileResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFileResponse.Response.ErrorCode);
                 }
                 else if (!IsUserCanAccessFolder(user, Path.GetDirectoryName(getFileRequest.Path)))
-                {
-                    getFileResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getFileResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getFileResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFileResponse.Response.ErrorCode);
                 }
                 else    // Valid credentials
                 {
@@ -398,7 +472,7 @@ namespace CFFileSystemConnection.Common
                         if (getFileResponse.FileObject == null)
                         {
                             getFileResponse.Response.ErrorCode = ResponseErrorCodes.FileDoesNotExist;
-                            getFileResponse.Response.ErrorMessage = "File does not exist";
+                            getFileResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFileResponse.Response.ErrorCode);
                         }
                     }
                     catch (Exception exception)
@@ -466,17 +540,17 @@ namespace CFFileSystemConnection.Common
                     }
                 };
 
-                var user = _userService.GetBySecurityKey(getFileContentRequest.SecurityKey);
+                var user = GetUserBySecurityKey(getFileContentRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemRead))   // Invalid credentials
-                {
-                    getFileContentResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getFileContentResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getFileContentResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFileContentResponse.Response.ErrorCode);
                 }
                 else if (!IsUserCanAccessFolder(user, Path.GetDirectoryName(getFileContentRequest.Path)))
-                {
-                    getFileContentResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     getFileContentResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    getFileContentResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFileContentResponse.Response.ErrorCode);
                 }
                 else    // Valid credentials
                 {
@@ -486,9 +560,9 @@ namespace CFFileSystemConnection.Common
                         var fileObject = _fileSystemLocal.GetFile(getFileContentRequest.Path);
 
                         if (fileObject == null)
-                        {
-                            getFileContentResponse.Response.ErrorMessage = "File does not exist";
+                        {                            
                             getFileContentResponse.Response.ErrorCode = ResponseErrorCodes.FileDoesNotExist;
+                            getFileContentResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(getFileContentResponse.Response.ErrorCode);
                         }
                         else   // File exists, return it in sections
                         {
@@ -575,17 +649,17 @@ namespace CFFileSystemConnection.Common
                 };
 
                 // Check permissions
-                var user = _userService.GetBySecurityKey(writeFileRequest.SecurityKey);
+                var user = GetUserBySecurityKey(writeFileRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemWrite))   // Invalid credentials
-                {
-                    writeFileResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     writeFileResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    writeFileResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(writeFileResponse.Response.ErrorCode);
                 }
                 else if (!IsUserCanAccessFolder(user, writeFileRequest.FileObject.Path))   // User does't have access to path
                 {
                     writeFileResponse.Response.ErrorMessage = "Permission denied";
-                    writeFileResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    writeFileResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(writeFileResponse.Response.ErrorCode);
                 }
                 else     // Valid credentials
                 {
@@ -624,9 +698,9 @@ namespace CFFileSystemConnection.Common
                                 File.Move(fileWriteSession.TempFile, writeFileRequest.FileObject.Path);
                             }
                             else
-                            {
-                                writeFileResponse.Response.ErrorMessage = "Received file size is different to expected";
+                            {                                
                                 writeFileResponse.Response.ErrorCode = ResponseErrorCodes.FileSystemError;
+                                writeFileResponse.Response.ErrorMessage = "Received file size is different to expected";
                             }
 
                             // Clean up
@@ -780,12 +854,12 @@ namespace CFFileSystemConnection.Common
                 };
 
                 // Check permissions
-                var user = _userService.GetBySecurityKey(deleteRequest.SecurityKey);
+                var user = GetUserBySecurityKey(deleteRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemWrite))   // Invalid credentials
-                {
-                    deleteResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     deleteResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    deleteResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(deleteResponse.Response.ErrorCode);
                 }
                 else     // Valid credentials
                 {
@@ -795,18 +869,34 @@ namespace CFFileSystemConnection.Common
                         var fileObject = _fileSystemLocal.GetFile(deleteRequest.Path);
                         var folderObject = _fileSystemLocal.GetFolder(deleteRequest.Path, false, false);
 
-                        if (fileObject != null)
+                        if (fileObject != null)     // Delete file 
                         {
-                            //_fileSystemLocal.DeleteFile(deleteRequest.Path);
+                            if (IsUserCanAccessFolder(user, Path.GetDirectoryName(deleteRequest.Path)))
+                            {
+                                //_fileSystemLocal.DeleteFile(deleteRequest.Path);
+                            }
+                            else
+                            {                                
+                                deleteResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                                deleteResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(deleteResponse.Response.ErrorCode);
+                            }
                         }
-                        else if (folderObject != null)
+                        else if (folderObject != null)  // Delete folder
                         {
-                            //_fileSystemLocal.DeleteFolder(deleteRequest.Path);
+                            if (IsUserCanAccessFolder(user, deleteRequest.Path))
+                            {
+                                //_fileSystemLocal.DeleteFolder(deleteRequest.Path);
+                            }
+                            else
+                            {                                
+                                deleteResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                                deleteResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(deleteResponse.Response.ErrorCode);
+                            }
                         }
                         else
                         {
-                            deleteResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;
-                            deleteResponse.Response.ErrorMessage = "File or folder does not exist";
+                            deleteResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;                            
+                            deleteResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(deleteResponse.Response.ErrorCode);
                         }            
                     }
                     catch (Exception exception)
@@ -871,12 +961,12 @@ namespace CFFileSystemConnection.Common
                 };
 
                 // Check permissions
-                var user = _userService.GetBySecurityKey(moveRequest.SecurityKey);
+                var user = GetUserBySecurityKey(moveRequest.SecurityKey);
                 if (user == null ||
                     !user.Roles.Contains(UserRoles.FileSystemWrite))   // Invalid credentials
-                {
-                    moveResponse.Response.ErrorMessage = "Permission denied";
+                {                    
                     moveResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    moveResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(moveResponse.Response.ErrorCode);
                 }
                 else     // Valid credentials
                 {
@@ -892,11 +982,20 @@ namespace CFFileSystemConnection.Common
                         {
                             if (newFileObject == null)
                             {
-                                _fileSystemLocal.MoveFile(moveRequest.OldPath, moveRequest.NewPath);
+                                if (IsUserCanAccessFolder(user, Path.GetFileName(moveRequest.OldPath)) &&
+                                    IsUserCanAccessFolder(user, Path.GetFileName(moveRequest.NewPath)))
+                                {
+                                    _fileSystemLocal.MoveFile(moveRequest.OldPath, moveRequest.NewPath);
+                                }
+                                else    // No permission to access old & new file path
+                                {                                    
+                                    moveResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                                    moveResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(moveResponse.Response.ErrorCode);
+                                }
                             }
                             else    // New file exists
                             {
-                                moveResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;
+                                moveResponse.Response.ErrorCode = ResponseErrorCodes.Unknown;                                
                                 moveResponse.Response.ErrorMessage = "New file already exists";
                             }
                         }
@@ -904,7 +1003,16 @@ namespace CFFileSystemConnection.Common
                         {
                             if (newFolderObject == null)
                             {
-                                _fileSystemLocal.MoveFolder(moveRequest.OldPath, moveRequest.NewPath);
+                                if (IsUserCanAccessFolder(user, moveRequest.OldPath) &&
+                                    IsUserCanAccessFolder(user, moveRequest.NewPath))
+                                {
+                                    _fileSystemLocal.MoveFolder(moveRequest.OldPath, moveRequest.NewPath);
+                                }
+                                else  // No permission to access old & new folder path
+                                {                                    
+                                    moveResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                                    moveResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(moveResponse.Response.ErrorCode);
+                                }
                             }
                             else   // New folder exists
                             {
