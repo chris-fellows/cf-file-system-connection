@@ -1,6 +1,7 @@
 using CFConnectionMessaging.Models;
 using CFFileSystemConnection;
 using CFFileSystemConnection.Common;
+using CFFileSystemConnection.Exceptions;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.Models;
 using CFFileSystemConnection.Service;
@@ -39,85 +40,7 @@ namespace CFFileSystemManager
             //var folderObject = fileSystem.GetFolder(@"C:\", false, false);
 
             _connectionSettingsService = new JsonConnectionSettingsService(Path.Combine(Environment.CurrentDirectory, "Data"));
-
-            /*
-            // Get remote IP and port
-            var remoteIp = System.Configuration.ConfigurationManager.AppSettings.Get("RemoteIP").ToString();
-            if (remoteIp.Equals("local"))
-            {
-                remoteIp = Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(a =>
-                            a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork).ToString();
-            }
-
-            int remotePort = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings.Get("RemotePort").ToString());
-
-            var securityKey = System.Configuration.ConfigurationManager.AppSettings.Get("SecurityKey").ToString();
-            var fileSystemConnection = new FileSystemConnection(securityKey)
-            {
-                RemoteEndpoint = new EndpointInfo()
-                {
-                    Ip = remoteIp,      
-                    Port  = remotePort
-                }
-            };
-            _fileSystemConnection = fileSystemConnection;
-
-            // Start listening for messages
-            var localPort = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings.Get("LocalPort").ToString());
-            fileSystemConnection.StartListening(localPort);
-
-            RefreshFolders();
-            */
         }
-
-        //private void TestFileReadSections(string file)
-        //{            
-        //    int sectionCount = 0;
-        //    var sections = new List<byte[]>();
-        //    using (var streamReader = new BinaryReader(File.OpenRead(file)))
-        //    {
-        //        var section = new byte[0];
-        //        do
-        //        {
-        //            section = streamReader.ReadBytes(_fileSectionBytes);
-        //            sectionCount++;
-        //            sections.Add(section);
-        //        } while (streamReader.BaseStream.Position < streamReader.BaseStream.Length);
-        //    }
-
-        //    var newFile = Path.Combine("D:\\Test\\", Path.GetFileName(file));
-        //    using (var writer = new BinaryWriter(File.OpenWrite(newFile)))
-        //    {
-        //        while (sections.Any())
-        //        {
-        //            writer.Write(sections[0]);
-        //            sections.RemoveAt(0);
-        //        }
-
-        //        writer.Flush();
-        //    }
-
-        //    var isSameFileContents = IsSameFileContents(file, newFile);
-
-        //    int xxx = 1000;
-        //}
-
-        //private static bool IsSameFileContents(string file1, string file2)
-        //{
-        //    if (!File.Exists(file1) || !File.Exists(file2)) return false;
-
-        //    var content1 = File.ReadAllBytes(file1);
-        //    var content2 = File.ReadAllBytes(file2);
-
-        //    if (content1.Length != content2.Length) return false;
-
-        //    for (int index = 0; index < content1.Length; index++)
-        //    {
-        //        if (content1[index] != content2[index]) return false;
-        //    }
-
-        //    return true;
-        //}
 
         /// <summary>
         /// Initialises the connection to the file system. Displays initialise list of top level folders.
@@ -129,7 +52,7 @@ namespace CFFileSystemManager
 
             if (_fileSystem != null)
             {
-                _fileSystem = null;
+                _fileSystem.Close();
             }
 
             var fileSystemConnection = new FileSystemConnection(connectionSettings.SecurityKey)
@@ -148,7 +71,7 @@ namespace CFFileSystemManager
 
             // Display drives            
             RefreshDrives();
-   
+
             DisplayStatus("Ready");
         }
 
@@ -156,7 +79,16 @@ namespace CFFileSystemManager
         {
             DisplayStatus("Getting drives");
 
-            var drives = _fileSystem.GetDrives();
+            List<DriveObject> drives = new List<DriveObject>();
+
+            try
+            {
+                drives = _fileSystem.GetDrives();
+            }
+            catch (FileSystemConnectionException fscException)
+            {
+                MessageBox.Show($"Connection error: {fscException.Message}", "Error");
+            }
 
             if (!drives.Any())
             {
@@ -225,7 +157,7 @@ namespace CFFileSystemManager
             tvwFolder.Nodes.Clear();
 
             // Add root node
-            var rootNode = tvwFolder.Nodes.Add("/", "/", _folderIconIndex);            
+            var rootNode = tvwFolder.Nodes.Add("/", "/", _folderIconIndex);
             rootNode.Tag = folder;
 
             // Add sub-folders
@@ -373,7 +305,7 @@ namespace CFFileSystemManager
         }
 
         private void copyLocalFileToToolStripMenuItem_Click(object sender, EventArgs e)
-        {            
+        {
             OpenFileDialog dialog = new OpenFileDialog()
             {
                 Title = "Select file(s)",
@@ -384,15 +316,28 @@ namespace CFFileSystemManager
                 FolderObject folderObject = (FolderObject)tvwFolder.SelectedNode.Tag;
 
                 // Copy file(s)
-                foreach(var localFile in dialog.FileNames)
+                foreach (var localFile in dialog.FileNames)
                 {
-                    string remoteFile = Path.Combine(folderObject.Path, Path.GetFileName(localFile));                    
+                    string remoteFile = Path.Combine(folderObject.Path, Path.GetFileName(localFile));
                     FileSystemUtilities.CopyLocalFileTo(_fileSystem, _fileSystemLocal, localFile, remoteFile,
-                                    _fileSectionBytes, 
+                                    _fileSectionBytes,
                                     (status) => DisplayStatus(status));
                 }
 
                 MessageBox.Show("File(s) copied", "Copy File(s)");
+            }
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Clean up
+            if (_fileSystem != null)
+            {
+                _fileSystem.Close();
+            }
+            if (_fileSystemLocal != null)
+            {
+                _fileSystemLocal.Close();
             }
         }
     }

@@ -39,11 +39,11 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             splitContainer1 = new SplitContainer();
             tvwFolder = new TreeView();
+            imageList1 = new ImageList(components);
             cmsFolder = new ContextMenuStrip(components);
             copyToLocalToolStripMenuItem = new ToolStripMenuItem();
             testCopyFileBySectionsToolStripMenuItem = new ToolStripMenuItem();
             copyLocalFileToToolStripMenuItem = new ToolStripMenuItem();
-            imageList1 = new ImageList(components);
             toolStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -128,6 +128,13 @@
             tvwFolder.BeforeExpand += tvwFolder_BeforeExpand;
             tvwFolder.AfterSelect += tvwFolder_AfterSelect;
             // 
+            // imageList1
+            // 
+            imageList1.ColorDepth = ColorDepth.Depth32Bit;
+            imageList1.ImageStream = (ImageListStreamer)resources.GetObject("imageList1.ImageStream");
+            imageList1.TransparentColor = Color.Transparent;
+            imageList1.Images.SetKeyName(0, "folderdocuments.ico");
+            // 
             // cmsFolder
             // 
             cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem, testCopyFileBySectionsToolStripMenuItem, copyLocalFileToToolStripMenuItem });
@@ -155,13 +162,6 @@
             copyLocalFileToToolStripMenuItem.Text = "Copy local file to";
             copyLocalFileToToolStripMenuItem.Click += copyLocalFileToToolStripMenuItem_Click;
             // 
-            // imageList1
-            // 
-            imageList1.ColorDepth = ColorDepth.Depth32Bit;
-            imageList1.ImageStream = (ImageListStreamer)resources.GetObject("imageList1.ImageStream");
-            imageList1.TransparentColor = Color.Transparent;
-            imageList1.Images.SetKeyName(0, "folderdocuments.ico");
-            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -172,6 +172,7 @@
             Controls.Add(toolStrip1);
             Name = "MainForm";
             Text = "CF File System Manager";
+            FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             toolStrip1.ResumeLayout(false);
             toolStrip1.PerformLayout();

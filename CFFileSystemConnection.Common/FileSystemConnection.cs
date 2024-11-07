@@ -1,4 +1,5 @@
 ﻿using CFConnectionMessaging;
+using CFConnectionMessaging.Exceptions;
 using CFConnectionMessaging.Interfaces;
 using CFConnectionMessaging.Models;
 using CFFileSystemConnection.Constants;
@@ -7,8 +8,6 @@ using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
 using System.Diagnostics;
-using System.IO;
-using System.Threading;
 
 namespace CFFileSystemConnection.Common
 {
@@ -58,13 +57,18 @@ namespace CFFileSystemConnection.Common
             _connection.OnConnectionMessageReceived += _connection_OnConnectionMessageReceived;
         }
 
+        public void Close()
+        {
+            Dispose();
+        }
+
         public void Dispose()
         {
             if (_connection != null)
             {
-                _connection.StopListening();
+                if (_connection.IsListening) _connection.StopListening();
                 _connection.OnConnectionMessageReceived -= _connection_OnConnectionMessageReceived;
-                _connection = null;
+                _connection.Dispose();
             }
         }
 
@@ -76,6 +80,10 @@ namespace CFFileSystemConnection.Common
 
         public void StartListening(int port)
         {
+            if (_connection.IsListening)
+            {
+                _connection.StopListening();
+            }            
             _connection.ReceivePort = port;
             _connection.StartListening();
         }
@@ -128,9 +136,17 @@ namespace CFFileSystemConnection.Common
             {
                 Id = Guid.NewGuid().ToString(),
                 TypeId = MessageTypeIds.GetDrivesRequest,
-                SecurityKey = _securityKey,                
+                SecurityKey = _securityKey,
             };
-            _connection.SendMessage(_getDrivesRequestConverter.GetConnectionMessage(getDrivesRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_getDrivesRequestConverter.GetConnectionMessage(getDrivesRequest), _remoteEndpointInfo);
+            }
+            catch(ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();
@@ -171,7 +187,16 @@ namespace CFFileSystemConnection.Common
                 GetFiles = getFiles,
                 RecurseSubFolders = recurseSubFolders
             };
-            _connection.SendMessage(_getFolderRequestConverter.GetConnectionMessage(getFolderRequest), _remoteEndpointInfo);
+
+            try
+            {
+
+                _connection.SendMessage(_getFolderRequestConverter.GetConnectionMessage(getFolderRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();
@@ -210,7 +235,15 @@ namespace CFFileSystemConnection.Common
                 SecurityKey = _securityKey,
                 Path = path
             };
-            _connection.SendMessage(_getFileRequestConverter.GetConnectionMessage(getFileRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_getFileRequestConverter.GetConnectionMessage(getFileRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();
@@ -280,7 +313,15 @@ namespace CFFileSystemConnection.Common
                 Path = path,
                 SectionBytes = sectionBytes
             };
-            _connection.SendMessage(_getFileContentRequestConverter.GetConnectionMessage(getFileContentRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_getFileContentRequestConverter.GetConnectionMessage(getFileContentRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for all responses, pass sections to caller
             MessageResponse? firstErrorMessageResponse = null;
@@ -330,7 +371,15 @@ namespace CFFileSystemConnection.Common
                     Content = sectionData.Item1,
                     IsMore = sectionData.Item2
                 };
-                _connection.SendMessage(_writeFileRequestConverter.GetConnectionMessage(writeFileRequest), _remoteEndpointInfo);
+
+                try
+                {
+                    _connection.SendMessage(_writeFileRequestConverter.GetConnectionMessage(writeFileRequest), _remoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
 
                 // Wait for response. Should only receive one response
                 var responseMessages = new List<MessageBase>();
@@ -399,43 +448,7 @@ namespace CFFileSystemConnection.Common
 
             return isGotAllResponses; 
         }
-
-        ///// <summary>
-        ///// Waits for all responses for request until completed or until timeout
-        ///// </summary>
-        ///// <param name="request"></param>
-        ///// <param name="timeout"></param>
-        ///// <returns>List of responses if all responses received; null: If failed to get all responses </returns>
-        //private List<MessageBase>? WaitForResponses(MessageBase request, TimeSpan timeout,
-        //                                     List<MessageBase> responseMessagesToCheck)
-        //{
-        //    var stopwatch = new Stopwatch();
-        //    stopwatch.Start();            
-
-        //    var isGotAllResponses = false;
-        //    var responses = new List<MessageBase>();
-        //    while (!isGotAllResponses &&
-        //        stopwatch.Elapsed < timeout)
-        //    {
-        //        // Check for response message
-        //        var responseMessage = responseMessagesToCheck.FirstOrDefault(m => m.Response != null && m.Response.MessageId == request.Id);
-            
-        //        if (responseMessage != null)                    
-        //        {
-        //            // Discard
-        //            responseMessagesToCheck.Remove(responseMessage);
-
-        //            // Add to list to return
-        //            responses.Add(responseMessage);
-        //            isGotAllResponses = !responseMessage.Response.IsMore;
-        //        }
-
-        //        Thread.Sleep(20);
-        //    }
-
-        //    return isGotAllResponses ? responses : null;
-        //}
-
+    
         public void DeleteFile(string path)
         {
             // Send DeleteRequest message
@@ -446,7 +459,15 @@ namespace CFFileSystemConnection.Common
                 SecurityKey = _securityKey,
                 Path = path
             };
-            _connection.SendMessage(_deleteRequestConverter.GetConnectionMessage(deleteRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_deleteRequestConverter.GetConnectionMessage(deleteRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();
@@ -482,7 +503,15 @@ namespace CFFileSystemConnection.Common
                 SecurityKey = _securityKey,
                 Path = path
             };
-            _connection.SendMessage(_deleteRequestConverter.GetConnectionMessage(deleteRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_deleteRequestConverter.GetConnectionMessage(deleteRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();
@@ -519,7 +548,15 @@ namespace CFFileSystemConnection.Common
                 OldPath = oldPath,
                 NewPath = newPath
             };
-            _connection.SendMessage(_moveRequestConverter.GetConnectionMessage(moveRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_moveRequestConverter.GetConnectionMessage(moveRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();
@@ -556,7 +593,15 @@ namespace CFFileSystemConnection.Common
                 OldPath = oldPath,
                 NewPath = newPath
             };
-            _connection.SendMessage(_moveRequestConverter.GetConnectionMessage(moveRequest), _remoteEndpointInfo);
+
+            try
+            {
+                _connection.SendMessage(_moveRequestConverter.GetConnectionMessage(moveRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
 
             // Wait for response. Should only receive one response
             var responseMessages = new List<MessageBase>();

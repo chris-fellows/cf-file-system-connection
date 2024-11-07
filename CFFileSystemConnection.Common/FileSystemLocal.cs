@@ -15,6 +15,11 @@ namespace CFFileSystemConnection.Common
     /// </summary>
     public class FileSystemLocal : IFileSystem
     {
+        public void Close()
+        {
+
+        }
+
         public List<DriveObject> GetDrives()
         {
             var drives = new List<DriveObject>();

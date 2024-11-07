@@ -1,8 +1,10 @@
 ﻿using CFConnectionMessaging;
+using CFConnectionMessaging.Exceptions;
 using CFConnectionMessaging.Interfaces;
 using CFConnectionMessaging.Models;
 using CFFileSystemConnection.Constants;
 using CFFileSystemConnection.Enums;
+using CFFileSystemConnection.Exceptions;
 using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
@@ -318,8 +320,16 @@ namespace CFFileSystemConnection.Common
                     OnStatusMessage($"Sending response for get drives request {getDrivesRequest.Id} to " +
                                 $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
                 }
-                _connection.SendMessage(_getDrivesResponseConverter.GetConnectionMessage(getDrivesResponse),
-                                    messageReceivedInfo.RemoteEndpointInfo);
+
+                try
+                {
+                    _connection.SendMessage(_getDrivesResponseConverter.GetConnectionMessage(getDrivesResponse),
+                                        messageReceivedInfo.RemoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
 
                 if (OnStatusMessage != null)
                 {
@@ -404,8 +414,16 @@ namespace CFFileSystemConnection.Common
                     OnStatusMessage($"Sending response for get folder request {getFolderRequest.Id} to " +
                                 $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
                 }
-                _connection.SendMessage(_getFolderResponseConverter.GetConnectionMessage(getFolderResponse),
-                                    messageReceivedInfo.RemoteEndpointInfo);
+
+                try
+                {
+                    _connection.SendMessage(_getFolderResponseConverter.GetConnectionMessage(getFolderResponse),
+                                        messageReceivedInfo.RemoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
 
                 if (OnStatusMessage != null)
                 {
@@ -609,8 +627,15 @@ namespace CFFileSystemConnection.Common
                                     $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
                     }
 
-                    _connection.SendMessage(_getFileContentResponseConverter.GetConnectionMessage(getFileContentResponse),
-                                        messageReceivedInfo.RemoteEndpointInfo);
+                    try
+                    {
+                        _connection.SendMessage(_getFileContentResponseConverter.GetConnectionMessage(getFileContentResponse),
+                                            messageReceivedInfo.RemoteEndpointInfo);
+                    }
+                    catch (ConnectionException connectionException)
+                    {
+                        throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                    }
                 }
 
                 if (OnStatusMessage != null)
@@ -721,8 +746,16 @@ namespace CFFileSystemConnection.Common
                     OnStatusMessage($"Sending response for get folder request {writeFileRequest.Id} to " +
                                 $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
                 }
-                _connection.SendMessage(_writeFileResponseConverter.GetConnectionMessage(writeFileResponse),
-                                    messageReceivedInfo.RemoteEndpointInfo);
+
+                try
+                {
+                    _connection.SendMessage(_writeFileResponseConverter.GetConnectionMessage(writeFileResponse),
+                                        messageReceivedInfo.RemoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
 
                 if (OnStatusMessage != null)
                 {
@@ -912,8 +945,16 @@ namespace CFFileSystemConnection.Common
                     OnStatusMessage($"Sending response for deleting {deleteRequest.Path} request {deleteRequest.Id} to " +
                                 $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
                 }
-                _connection.SendMessage(_deleteResponseConverter.GetConnectionMessage(deleteResponse),
-                                    messageReceivedInfo.RemoteEndpointInfo);
+
+                try
+                {
+                    _connection.SendMessage(_deleteResponseConverter.GetConnectionMessage(deleteResponse),
+                                        messageReceivedInfo.RemoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
 
                 if (OnStatusMessage != null)
                 {
@@ -1039,8 +1080,16 @@ namespace CFFileSystemConnection.Common
                     OnStatusMessage($"Sending response for moving {moveRequest.OldPath} request {moveRequest.Id} to " +
                                 $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
                 }
-                _connection.SendMessage(_moveResponseConverter.GetConnectionMessage(moveResponse),
-                                    messageReceivedInfo.RemoteEndpointInfo);
+
+                try
+                {
+                    _connection.SendMessage(_moveResponseConverter.GetConnectionMessage(moveResponse),
+                                        messageReceivedInfo.RemoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
 
                 if (OnStatusMessage != null)
                 {

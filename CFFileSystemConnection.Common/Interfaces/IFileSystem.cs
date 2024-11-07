@@ -7,6 +7,8 @@ namespace CFFileSystemConnection.Interfaces
     /// </summary>
     public interface IFileSystem
     {
+        void Close();
+
         /// <summary>
         /// Gets drives
         /// </summary>
