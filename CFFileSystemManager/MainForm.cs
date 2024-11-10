@@ -11,13 +11,14 @@ using System.CodeDom;
 using System.IO;
 using System.Net;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace CFFileSystemManager
 {
     public partial class MainForm : Form
     {
         private readonly IConnectionSettingsService _connectionSettingsService;
-        private IFileSystem _fileSystem;
+        private IFileSystem _fileSystemRemote;
         private IFileSystem _fileSystemLocal = new FileSystemLocal();
 
         private const int _folderIconIndex = 0;
@@ -31,13 +32,7 @@ namespace CFFileSystemManager
 
         public MainForm()
         {
-            InitializeComponent();
-
-            //var file = "D:\\Test\\Creed\\Human Clay\\09-Higher.mp3";
-            //TestFileReadSections(file);
-
-            //IFileSystem fileSystem = new FileSystemLocal();
-            //var folderObject = fileSystem.GetFolder(@"C:\", false, false);
+            InitializeComponent();      
 
             _connectionSettingsService = new JsonConnectionSettingsService(Path.Combine(Environment.CurrentDirectory, "Data"));
         }
@@ -50,9 +45,9 @@ namespace CFFileSystemManager
         {
             DisplayStatus($"Initialising connection for {connectionSettings.Name}");
 
-            if (_fileSystem != null)
+            if (_fileSystemRemote != null)
             {
-                _fileSystem.Close();
+                _fileSystemRemote.Close();
             }
 
             var fileSystemConnection = new FileSystemConnection(connectionSettings.SecurityKey)
@@ -63,7 +58,7 @@ namespace CFFileSystemManager
                     Port = connectionSettings.RemoteEndpoint.Port
                 }
             };
-            _fileSystem = fileSystemConnection;
+            _fileSystemRemote = fileSystemConnection;
 
             // Start listening for messages
             var localPort = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings.Get("LocalPort").ToString());
@@ -83,7 +78,7 @@ namespace CFFileSystemManager
 
             try
             {
-                drives = _fileSystem.GetDrives();
+                drives = _fileSystemRemote.GetDrives();
             }
             catch (FileSystemConnectionException fscException)
             {
@@ -152,8 +147,9 @@ namespace CFFileSystemManager
             // Get root folder and next level folders
             //var folder = _fileSystem.GetFolder("/", false, false);
 
-            var folder = _fileSystem.GetFolder(driveObject.Path, false, false);
+            var folder = _fileSystemRemote.GetFolder(driveObject.Path, false, false);
 
+            splitContainer1.Panel2.Controls.Clear();
             tvwFolder.Nodes.Clear();
 
             // Add root node
@@ -206,11 +202,11 @@ namespace CFFileSystemManager
                 DisplayStatus($"Getting files for {folderObject.Path}");
 
                 // Get files for folder
-                var folderObjectWithFiles = _fileSystem.GetFolder(folderObject.Path, true, false);
+                var folderObjectWithFiles = _fileSystemRemote.GetFolder(folderObject.Path, true, false);
 
                 // Display folder control and display file list
                 splitContainer1.Panel2.Controls.Clear();
-                var folderControl = new FolderControl(_fileSystem, folderObjectWithFiles);
+                var folderControl = new FolderControl(_fileSystemRemote, folderObjectWithFiles);
                 folderControl.Dock = DockStyle.Fill;
                 splitContainer1.Panel2.Controls.Add(folderControl);
 
@@ -233,7 +229,7 @@ namespace CFFileSystemManager
                 DisplayStatus($"Reading folder {parentFolderObject.Path}");
 
                 // Get sub-folders
-                var folderObject = _fileSystem.GetFolder(parentFolderObject.Path, false, false);
+                var folderObject = _fileSystemRemote.GetFolder(parentFolderObject.Path, false, false);
 
                 // Add sub-folders to tree
                 if (folderObject.Folders != null)
@@ -274,7 +270,7 @@ namespace CFFileSystemManager
 
                 // Set local folder to copy to
                 var localFolder = Path.Combine(Path.GetTempPath(), "Download", Guid.NewGuid().ToString(), folderObject.Name);
-                FileSystemUtilities.CopyFolderToLocal(_fileSystem, folderObject, localFolder, _fileSectionBytes,
+                FileSystemUtilities.CopyFolderToLocal(_fileSystemRemote, folderObject, localFolder, _fileSectionBytes,
                                     (status) => DisplayStatus(status));
 
                 DisplayStatus("Ready");
@@ -291,6 +287,7 @@ namespace CFFileSystemManager
                 if (driveObject.Name == _noneText)
                 {
                     tvwFolder.Nodes.Clear();
+                    splitContainer1.Panel2.Controls.Clear();
                 }
                 else
                 {
@@ -319,7 +316,8 @@ namespace CFFileSystemManager
                 foreach (var localFile in dialog.FileNames)
                 {
                     string remoteFile = Path.Combine(folderObject.Path, Path.GetFileName(localFile));
-                    FileSystemUtilities.CopyLocalFileTo(_fileSystem, _fileSystemLocal, localFile, remoteFile,
+                    FileSystemUtilities.CopyFileBetween(_fileSystemLocal, localFile,
+                                    _fileSystemRemote, remoteFile,
                                     _fileSectionBytes,
                                     (status) => DisplayStatus(status));
                 }
@@ -331,14 +329,102 @@ namespace CFFileSystemManager
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Clean up
-            if (_fileSystem != null)
+            if (_fileSystemRemote != null)
             {
-                _fileSystem.Close();
+                _fileSystemRemote.Close();
             }
             if (_fileSystemLocal != null)
             {
                 _fileSystemLocal.Close();
             }
+        }
+
+        //// Determine whether one node is a parent 
+        //// or ancestor of a second node.
+        //private bool ContainsNode(TreeNode node1, TreeNode node2)
+        //{
+        //    // Check the parent node of the second node.
+        //    if (node2.Parent == null) return false;
+        //    if (node2.Parent.Equals(node1)) return true;
+
+        //    // If the parent node is not null or equal to the first node, 
+        //    // call the ContainsNode method recursively using the parent of 
+        //    // the second node.
+        //    return ContainsNode(node1, node2.Parent);
+        //}
+
+        private void tvwFolder_DragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = e.AllowedEffect;
+        }
+
+        private void tvwFolder_ItemDrag(object sender, ItemDragEventArgs e)
+        {
+            // Move the dragged node when the left mouse button is used.
+            if (e.Button == MouseButtons.Left)
+            {
+                DoDragDrop(e.Item, DragDropEffects.Move);
+            }
+
+            // Copy the dragged node when the right mouse button is used.
+            else if (e.Button == MouseButtons.Right)
+            {
+                DoDragDrop(e.Item, DragDropEffects.Copy);
+            }
+        }
+
+        private void tvwFolder_DragOver(object sender, DragEventArgs e)
+        {
+            // Retrieve the client coordinates of the mouse position.
+            Point targetPoint = tvwFolder.PointToClient(new Point(e.X, e.Y));
+
+            // Select the node at the mouse position.
+            tvwFolder.SelectedNode = tvwFolder.GetNodeAt(targetPoint);
+        }
+
+        private void tvwFolder_DragDrop(object sender, DragEventArgs e)
+        {
+            // Get drop location point
+            Point targetPoint = tvwFolder.PointToClient(new Point(e.X, e.Y));
+
+            // Get drop node
+            TreeNode targetNode = tvwFolder.GetNodeAt(targetPoint);
+
+            // Check that it's a folder node
+            if (!(targetNode.Tag is FolderObject))
+            {
+                return;
+            }
+
+            // Get folder object to copy to
+            var folderObject = (FolderObject)targetNode.Tag;
+
+            // Get files dropped
+            var filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop);
+           
+            // Check that only files dropped
+            // TODO: Support folder copy            
+            if (filesDropped.Any(file => !File.Exists(file)))
+            {                         
+                MessageBox.Show("Only files can be dropped", "Error");
+                return;                
+            }
+            
+            if (MessageBox.Show($"Do you want to copy the selected file(s) to {folderObject.Path}?", "Copy Files", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                foreach(var file in filesDropped)
+                {
+                    if (File.Exists(file))      // Check that it's not a folder
+                    {
+                        FileSystemUtilities.CopyFileBetween(_fileSystemLocal, file,
+                                    _fileSystemRemote, Path.Combine(folderObject.Path, Path.GetFileName(file)),
+                                    _fileSectionBytes,
+                                    (status) => DisplayStatus(status));
+                    }
+                }
+
+                MessageBox.Show("File(s) copied", "Copy Files");                
+            }          
         }
     }
 }

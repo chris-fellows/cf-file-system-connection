@@ -23,6 +23,9 @@ namespace CFFileSystemConnection.Common
         private readonly string _securityKey;
 
         // Message converters
+        private readonly IExternalMessageConverter<CreateFolderRequest> _createFolderRequestConverter = new CreateFolderRequestMessageConverter();
+        private readonly IExternalMessageConverter<CreateFolderResponse> _createFolderResponseConverter = new CreateFolderResponseMessageConverter();
+
         private readonly IExternalMessageConverter<DeleteRequest> _deleteRequestConverter = new DeleteRequestMessageConverter();
         private readonly IExternalMessageConverter<DeleteResponse> _deleteResponseConverter = new DeleteResponseMessageConverter();
 
@@ -624,6 +627,50 @@ namespace CFFileSystemConnection.Common
             else
             {
                 throw new FileSystemConnectionException($"Error moving folder");
+            }
+        }
+
+        public void CreateFolder(string path)
+        {
+            // Send DeleteRequest message
+            var createFolderRequest = new CreateFolderRequest()
+            {
+                Id = Guid.NewGuid().ToString(),
+                TypeId = MessageTypeIds.CreateFolderRequest,
+                SecurityKey = _securityKey,
+                Path = path
+            };
+
+            try
+            {
+                _connection.SendMessage(_createFolderRequestConverter.GetConnectionMessage(createFolderRequest), _remoteEndpointInfo);
+            }
+            catch (ConnectionException connectionException)
+            {
+                throw new FileSystemConnectionException(connectionException.Message, connectionException);
+            }
+
+            // Wait for response. Should only receive one response
+            var responseMessages = new List<MessageBase>();
+            var isGotAllMessages = WaitForResponses(createFolderRequest, _responseTimeout, _responseMessages,
+                                        (responseMessage) =>
+                                        {
+                                            responseMessages.Add(responseMessage);
+                                        });
+
+            // Process response
+            if (responseMessages.Any())
+            {
+                var createFolderResponse = (CreateFolderResponse)responseMessages.First();
+                if (createFolderResponse.Response.ErrorCode != null)
+                {
+                    throw new FileSystemConnectionException($"Error creating folder: {createFolderResponse.Response.ErrorMessage}")
+                    { ResponseErrorCode = createFolderResponse.Response.ErrorCode };
+                }
+            }
+            else
+            {
+                throw new FileSystemConnectionException($"Error creating folder");
             }
         }
     }

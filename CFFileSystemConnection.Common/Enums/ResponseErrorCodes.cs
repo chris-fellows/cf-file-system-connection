@@ -11,7 +11,9 @@ namespace CFFileSystemConnection.Enums
         [Description("File does not exist")]
         FileDoesNotExist,
         [Description("File system error")]
-        FileSystemError,        
+        FileSystemError,
+        [Description("Folder already exists")]
+        FolderAlreadyExists,
         [Description("Permission denied")]
         PermissionDenied   
     }

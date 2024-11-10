@@ -117,6 +117,7 @@
             // 
             // tvwFolder
             // 
+            tvwFolder.AllowDrop = true;
             tvwFolder.Dock = DockStyle.Fill;
             tvwFolder.ImageIndex = 0;
             tvwFolder.ImageList = imageList1;
@@ -126,7 +127,11 @@
             tvwFolder.Size = new Size(414, 673);
             tvwFolder.TabIndex = 0;
             tvwFolder.BeforeExpand += tvwFolder_BeforeExpand;
+            tvwFolder.ItemDrag += tvwFolder_ItemDrag;
             tvwFolder.AfterSelect += tvwFolder_AfterSelect;
+            tvwFolder.DragDrop += tvwFolder_DragDrop;
+            tvwFolder.DragEnter += tvwFolder_DragEnter;
+            tvwFolder.DragOver += tvwFolder_DragOver;
             // 
             // imageList1
             // 
@@ -164,6 +169,7 @@
             // 
             // MainForm
             // 
+            AllowDrop = true;
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1245, 720);

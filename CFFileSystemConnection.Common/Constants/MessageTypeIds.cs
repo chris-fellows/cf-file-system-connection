@@ -2,6 +2,10 @@
 {
     internal class MessageTypeIds
     {
+        public const string CreateFolderRequest = "CreateFolderRequest";
+
+        public const string CreateFolderResponse = "CreateFolderResponse";
+
         public const string DeleteRequest = "DeleteRequest";
 
         public const string DeleteResponse = "DeleteResponse";

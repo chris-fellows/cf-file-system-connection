@@ -15,7 +15,7 @@ namespace CFFileSystemConnection.Models
 
         public DateTime CreatedTimeUtc { get; set; }
 
-        public DateTimeOffset? UpdatedTimeUtc { get; set; }
+        public DateTime? UpdatedTimeUtc { get; set; }
 
         public bool ReadOnly { get; set; }
 

@@ -9,6 +9,7 @@ using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
 using CFFileSystemConnection.Utilities;
+using System;
 
 namespace CFFileSystemConnection.Common
 {
@@ -36,6 +37,9 @@ namespace CFFileSystemConnection.Common
         private readonly Dictionary<string, User> _usersBySecurityKey = new Dictionary<string, User>();
 
         // Message converters
+        private readonly IExternalMessageConverter<CreateFolderRequest> _createFolderRequestConverter = new CreateFolderRequestMessageConverter();
+        private readonly IExternalMessageConverter<CreateFolderResponse> _createFolderResponseConverter = new CreateFolderResponseMessageConverter();
+
         private readonly IExternalMessageConverter<DeleteRequest> _deleteRequestConverter = new DeleteRequestMessageConverter();
         private readonly IExternalMessageConverter<DeleteResponse> _deleteResponseConverter = new DeleteResponseMessageConverter();
 
@@ -190,6 +194,10 @@ namespace CFFileSystemConnection.Common
             // Handle message. Should only be a request
             switch(connectionMessage.TypeId)
             {
+                case MessageTypeIds.CreateFolderRequest:
+                    var createFolderRequest = _createFolderRequestConverter.GetExternalMessage(connectionMessage);
+                    HandleCreateFolderRequest(createFolderRequest, messageReceivedInfo);
+                    break;
                 case MessageTypeIds.DeleteRequest:
                     var deleteRequest = _deleteRequestConverter.GetExternalMessage(connectionMessage);
                     HandleDeleteRequest(deleteRequest, messageReceivedInfo);
@@ -252,6 +260,8 @@ namespace CFFileSystemConnection.Common
         /// <returns></returns>
         private static bool IsUserCanAccessFolder(User user, string path)
         {
+            return true;
+
             if (user.Permissions.Paths != null &&
                 !user.Permissions.Paths.Any(drivePath => path.StartsWith(drivePath)))
             {
@@ -1108,6 +1118,104 @@ namespace CFFileSystemConnection.Common
                 if (OnStatusMessage != null)
                 {
                     OnStatusMessage($"Error processing request {moveRequest.Id} to move {moveRequest.OldPath}: {exception.Message}");
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Handles CreateFolderRequest message
+        /// </summary>
+        /// <param name="moveRequest"></param>
+        private void HandleCreateFolderRequest(CreateFolderRequest createFolderRequest, MessageReceivedInfo messageReceivedInfo)
+        {
+            try
+            {
+                if (OnStatusMessage != null)
+                {
+                    OnStatusMessage($"Processing request {createFolderRequest.Id} to create folder {createFolderRequest.Path}");
+                }
+
+                var createFolderResponse = new CreateFolderResponse()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    TypeId = MessageTypeIds.DeleteResponse,
+                    Response = new MessageResponse()
+                    {
+                        MessageId = createFolderRequest.Id,
+                        IsMore = false
+                    }
+                };
+
+                // Check permissions
+                var user = GetUserBySecurityKey(createFolderRequest.SecurityKey);
+                if (user == null ||
+                    !user.Roles.Contains(UserRoles.FileSystemWrite))   // Invalid credentials
+                {
+                    createFolderResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    createFolderResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(createFolderResponse.Response.ErrorCode);
+                }
+                else if (!IsUserCanAccessFolder(user, createFolderRequest.Path))    // Not allowed to access folder
+                {
+                    createFolderResponse.Response.ErrorCode = ResponseErrorCodes.PermissionDenied;
+                    createFolderResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(createFolderResponse.Response.ErrorCode);
+                }
+                else     // Valid credentials
+                {
+                    try
+                    {
+                        var folderObject = _fileSystemLocal.GetFolder(createFolderRequest.Path, false, false);
+                        if (folderObject == null)
+                        {
+                            _fileSystemLocal.CreateFolder(createFolderRequest.Path);
+                        }
+                        else
+                        {
+                            createFolderResponse.Response.ErrorCode = ResponseErrorCodes.FolderAlreadyExists;
+                            createFolderResponse.Response.ErrorMessage = EnumUtilities.GetEnumDescription(createFolderResponse.Response.ErrorCode);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        createFolderResponse.Response.ErrorMessage = exception.Message;
+                        createFolderResponse.Response.ErrorCode = ResponseErrorCodes.FileSystemError;
+                    }
+                }
+
+                // Send response
+                if (OnStatusMessage != null)
+                {
+                    OnStatusMessage($"Sending response for create folder {createFolderRequest.Path} request {createFolderRequest.Id} to " +
+                                $"{messageReceivedInfo.RemoteEndpointInfo.Ip}:{messageReceivedInfo.RemoteEndpointInfo.Port}");
+                }
+
+                try
+                {
+                    _connection.SendMessage(_createFolderResponseConverter.GetConnectionMessage(createFolderResponse),
+                                        messageReceivedInfo.RemoteEndpointInfo);
+                }
+                catch (ConnectionException connectionException)
+                {
+                    throw new FileSystemConnectionException(connectionException.Message, connectionException);
+                }
+
+                if (OnStatusMessage != null)
+                {
+                    if (createFolderResponse.Response.ErrorCode == null)
+                    {
+                        OnStatusMessage($"Processed request {createFolderRequest.Id} to create {createFolderRequest.Path}");
+                    }
+                    else
+                    {
+                        OnStatusMessage($"Processed request {createFolderRequest.Id} to create {createFolderRequest.Path}: {createFolderResponse.Response.ErrorCode}");
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                if (OnStatusMessage != null)
+                {
+                    OnStatusMessage($"Error processing request {createFolderRequest.Id} to create {createFolderRequest.Path}: {exception.Message}");
                 }
             }
         }

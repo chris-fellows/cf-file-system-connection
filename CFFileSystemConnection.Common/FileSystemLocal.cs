@@ -116,13 +116,23 @@ namespace CFFileSystemConnection.Common
                         if (folderObject.Folders == null) folderObject.Folders = new();
                         var subFolderObject = GetFolderObject(new DirectoryInfo(subFolder));
                         folderObject.Folders.Add(subFolderObject);
-                    }                    
+                    }                                        
                 }
 
                 return folderObject;
             }            
 
             return null;           
+        }
+
+        public void CreateFolder(string path)
+        {
+            if (String.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            Directory.CreateDirectory(path);
         }
         
         public FileObject? GetFile(string path)
@@ -189,17 +199,7 @@ namespace CFFileSystemConnection.Common
                 UnixFileMode = directoryInfo.UnixFileMode.ToString()
             };
         }
-
-        //public byte[]? GetFileContent(string path)
-        //{
-        //    if (File.Exists(path))
-        //    {                
-        //        return File.ReadAllBytes(path);
-        //    }
-
-        //    return null;
-        //}
-
+    
         public void GetFileContentBySection(string path, int sectionBytes, Action<byte[], bool> actionSection)
         {
             if (String.IsNullOrEmpty(path))
@@ -254,6 +254,13 @@ namespace CFFileSystemConnection.Common
                     
                     writer.Flush();
                 }
+
+                // Apply file properties
+                var fileInfo = new FileInfo(fileObject.Path);
+                fileInfo.CreationTimeUtc = fileObject.CreatedTimeUtc;
+                fileInfo.LastWriteTimeUtc = fileObject.UpdatedTimeUtc.Value;
+                fileInfo.IsReadOnly = fileObject.ReadOnly;
+                //fileInfo.UnixFileMode = ""
             }
             catch (Exception exception)
             {
@@ -262,17 +269,39 @@ namespace CFFileSystemConnection.Common
         }
 
         public void DeleteFile(string path)
-        {            
+        {
+            if (String.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
             if (File.Exists(path)) File.Delete(path);
         }
 
         public void DeleteFolder(string path)
         {
+            if (String.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
             if (Directory.Exists(path)) Directory.Delete(path, true);
         }
 
         public void MoveFile(string oldPath, string newPath)
         {
+            if (String.IsNullOrEmpty(oldPath))
+            {
+                throw new ArgumentNullException(nameof(oldPath));
+            }
+            if (String.IsNullOrEmpty(newPath))
+            {
+                throw new ArgumentNullException(nameof(newPath));
+            }
+            if (oldPath == newPath)
+            {
+                throw new ArgumentException("Old path and new path must be different");
+            }
             if (!File.Exists(oldPath))
             {
                 throw new FileNotFoundException(oldPath);
@@ -287,6 +316,18 @@ namespace CFFileSystemConnection.Common
 
         public void MoveFolder(string oldPath, string newPath)
         {
+            if (String.IsNullOrEmpty(oldPath))
+            {
+                throw new ArgumentNullException(nameof(oldPath));
+            }
+            if (String.IsNullOrEmpty(newPath))
+            {
+                throw new ArgumentNullException(nameof(newPath));
+            }
+            if (oldPath == newPath)
+            {
+                throw new ArgumentException("Old path and new path must be different");
+            }
             if (!Directory.Exists(oldPath))
             {
                 throw new IOException("Folder does not exist");

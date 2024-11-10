@@ -7,6 +7,9 @@ namespace CFFileSystemConnection.Interfaces
     /// </summary>
     public interface IFileSystem
     {
+        /// <summary>
+        /// Closes connection
+        /// </summary>
         void Close();
 
         /// <summary>
@@ -29,14 +32,7 @@ namespace CFFileSystemConnection.Interfaces
         /// </summary>
         /// <param name="path">Path to check</param>
         /// <returns></returns>
-        FileObject? GetFile(string path);
-
-        ///// <summary>
-        ///// Gets file content
-        ///// </summary>
-        ///// <param name="path">Path to check</param>
-        ///// <returns></returns>
-        //byte[]? GetFileContent(string path);
+        FileObject? GetFile(string path); 
 
         /// <summary>
         /// Gets file content by section. This is to enable handling of large files.
@@ -56,6 +52,12 @@ namespace CFFileSystemConnection.Interfaces
         /// <param name="fileObject"></param>
         /// <param name="getSectionFunction"></param>
         void WriteFileContentBySection(FileObject fileObject, Func<Tuple<byte[], bool>> getSectionFunction);
+
+        /// <summary>
+        /// Creates folder
+        /// </summary>
+        /// <param name="path"></param>
+        void CreateFolder(string path);
 
         /// <summary>
         /// Deletes file

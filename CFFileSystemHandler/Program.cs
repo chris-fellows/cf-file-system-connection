@@ -15,7 +15,11 @@ try
 
     // Create users
     IUserService userService = new JsonUserService(Path.Combine(Environment.CurrentDirectory, "Data"));
-    InternalUtilities.CreateUsers(userService);
+    if (!userService.GetAll().Any())
+    {
+        loggingService.Log($"Creating users");
+        InternalUtilities.CreateUsers(userService);
+    }
 
     // Start listening
     const int port = 11000;

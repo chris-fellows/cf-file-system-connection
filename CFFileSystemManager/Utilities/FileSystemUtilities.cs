@@ -13,7 +13,7 @@ namespace CFFileSystemManager.Utilities
     /// File system (IFileSystem) utilities
     /// </summary>
     internal static class FileSystemUtilities
-    {
+    {        
         /// <summary>
         /// Copy remote folder to local folder
         /// </summary>
@@ -74,27 +74,54 @@ namespace CFFileSystemManager.Utilities
             }
         }
 
+        //public static void CopyFolderBetween(IFileSystem fileSystemSrc,
+        //                                    string folderSrc,
+        //                                    IFileSystem fileSystemDst,
+        //                                    string folderDst,
+        //                                    int fileSectionBytes,
+        //                                    Action<string> statusAction)
+        //{
+        //    statusAction($"Copying {folderSrc}");
+
+        //    // Get destination folder
+        //    var folderObjectDst = fileSystemDst.GetFolder(folderDst, true, false);
+
+        //    if (folderObjectDst == null)  // Create folder
+        //    {
+        //        fileSystemDst.CreateFolder(folderDst);
+        //        folderObjectDst = fileSystemDst.GetFolder(folderDst, true, false);
+        //    }
+
+        //    // Get source folder
+        //    var folderObjectSrc = fileSystemSrc.GetFolder(folderSrc, true, false);                        
+
+        //    statusAction($"Copied {folderSrc}");
+        //}
+
         /// <summary>
         /// Copies local file to remote. We stream sections of the file in to multiple request messages
         /// </summary>
         /// <param name="localFile"></param>
         /// <param name="remoteFile"></param>
-        public static void CopyLocalFileTo(IFileSystem fileSystem, IFileSystem fileSystemLocal,
-                                        string localFile, string remoteFile, int fileSectionBytes,
+        public static void CopyFileBetween(IFileSystem fileSystemSrc,
+                                        string fileSrc,
+                                        IFileSystem fileSystemDst,
+                                        string fileDst,                                        
+                                        int fileSectionBytes,
                                         Action<string> statusAction)
         {
-            statusAction($"Copying {localFile}");
+            statusAction($"Copying {fileSrc}");
 
             // Set remote object
-            var remoteFileObject = fileSystemLocal.GetFile(localFile);
-            remoteFileObject.Path = remoteFile;
+            var remoteFileObject = fileSystemSrc.GetFile(fileSrc);
+            remoteFileObject.Path = fileDst;
 
             // Start task to read file in to queue
             var queueMutex = new Mutex();
             var sectionQueue = new Queue<Tuple<byte[], bool>>();
             var readFileTask = Task.Factory.StartNew(() =>
             {
-                using (var streamReader = new BinaryReader(File.OpenRead(localFile)))
+                using (var streamReader = new BinaryReader(File.OpenRead(fileSrc)))
                 {
                     do
                     {
@@ -119,7 +146,7 @@ namespace CFFileSystemManager.Utilities
             });
 
             // Write file contents by section. Completes when final section writtn
-            fileSystem.WriteFileContentBySection(remoteFileObject, () =>
+            fileSystemDst.WriteFileContentBySection(remoteFileObject, () =>
             {
                 // Wait for section
                 while (!sectionQueue.Any())
@@ -137,7 +164,7 @@ namespace CFFileSystemManager.Utilities
             // Not really necessary but wait
             readFileTask.Wait();
 
-            statusAction($"Copied {localFile}");            
+            statusAction($"Copied {fileSrc}");            
         }
     }
 }
