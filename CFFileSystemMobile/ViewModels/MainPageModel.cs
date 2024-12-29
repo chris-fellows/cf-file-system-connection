@@ -37,9 +37,16 @@ namespace CFFileSystemMobile.ViewModels
 
             // Create file system request handler
             _fileSystemRequestHandler = new FileSystemRequestHandler(fileSystem, userService);
+            _fileSystemRequestHandler.AddCustomDriveObjects(new List<CFFileSystemConnection.Models.DriveObject>() { new CFFileSystemConnection.Models.DriveObject()
+            {
+                Name = Android.OS.Environment.ExternalStorageDirectory.Path,
+                Path = Android.OS.Environment.ExternalStorageDirectory.Path
+            }
+            });
             _fileSystemRequestHandler.OnStatusMessage += (status) =>
             {
                 //Status = status;
+                DebugMessage = status;
             };
 
             // Set handler for client connected
@@ -52,7 +59,7 @@ namespace CFFileSystemMobile.ViewModels
             _fileSystemRequestHandler.OnClientDisconnected += (endpoint) =>
             {
                 ConnectionStatusText = "Disconnected";
-            };
+            };                       
 
             // Handle user updated. E.g. Security key, permissions etc
             currentState.Events.OnUserUpdated += (user) =>

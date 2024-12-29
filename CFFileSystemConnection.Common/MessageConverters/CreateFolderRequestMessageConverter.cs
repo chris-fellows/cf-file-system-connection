@@ -11,7 +11,7 @@ namespace CFFileSystemConnection.MessageConverters
             var connectionMessage = new ConnectionMessage()
             {
                 Id = createFolderRequest.Id,
-                TypeId = createFolderRequest.TypeId,
+                TypeId = createFolderRequest.TypeId,                
                 Parameters = new List<ConnectionMessageParameter>()
                 {
                    new ConnectionMessageParameter()

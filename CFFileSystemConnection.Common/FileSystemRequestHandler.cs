@@ -33,6 +33,8 @@ namespace CFFileSystemConnection.Common
 
         private readonly IUserService _userService;
 
+        private List<DriveObject> _customDriveObjects = new List<DriveObject>();
+
         private DateTimeOffset _usersLastRefreshTime = DateTimeOffset.MinValue;
         private readonly Dictionary<string, User> _usersBySecurityKey = new Dictionary<string, User>();
 
@@ -113,6 +115,11 @@ namespace CFFileSystemConnection.Common
             _connection.OnConnectionMessageReceived += _connection_OnConnectionMessageReceived;
             _connection.OnClientConnected += _connection_OnClientConnected;
             _connection.OnClientDisconnected += _connection_OnClientDisconnected;
+        }
+
+        public void AddCustomDriveObjects(List<DriveObject> drives)
+        {
+            _customDriveObjects = drives;
         }
 
         /// <summary>
@@ -259,9 +266,7 @@ namespace CFFileSystemConnection.Common
         /// <param name="path"></param>
         /// <returns></returns>
         private static bool IsUserCanAccessFolder(User user, string path)
-        {
-            return true;
-
+        {          
             if (user.Permissions.Paths != null &&
                 !user.Permissions.Paths.Any(drivePath => path.StartsWith(drivePath)))
             {
@@ -315,6 +320,11 @@ namespace CFFileSystemConnection.Common
                         else    // Filter drives that user can access
                         {
                             getDrivesResponse.Drives = getDrivesResponse.Drives.Where(d => IsUserCanAccessFolder(user, d.Path)).ToList();
+
+                            if (_customDriveObjects != null)
+                            {
+                                getDrivesResponse.Drives.AddRange(_customDriveObjects);
+                            }
                         }
                     }
                     catch (Exception exception)
@@ -472,7 +482,7 @@ namespace CFFileSystemConnection.Common
                 var getFileResponse = new GetFileResponse()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    TypeId = MessageTypeIds.GetFolderResponse,
+                    TypeId = MessageTypeIds.GetFileResponse,
                     Response = new MessageResponse()
                     {
                         MessageId = getFileRequest.Id,
@@ -702,13 +712,19 @@ namespace CFFileSystemConnection.Common
                     {
                         // Check if sesssion active
                         var fileWriteSession = _fileWriteSessions.FirstOrDefault(fws => fws.SessionId == writeFileRequest.SessionId);
+
+                        // Check if we can write directly to dest (Small file received in one section)
+                        var isWriteDirectToDest = !writeFileRequest.IsMore && fileWriteSession == null;
+                       
                         if (fileWriteSession == null)   // Start new session
                         {
                             // We'll create a temp file in the destination folder
                             fileWriteSession = new FileWriteSession()
                             {
                                 SessionId = writeFileRequest.SessionId,                                                                     
-                                TempFile = GetUniqueFileName(Path.GetDirectoryName(writeFileRequest.FileObject.Path), ".tmp")
+                                TempFile = isWriteDirectToDest ?
+                                            writeFileRequest.FileObject.Path :
+                                            GetUniqueFileName(Path.GetDirectoryName(writeFileRequest.FileObject.Path), ".tmp")
                             };
                             Directory.CreateDirectory(Path.GetDirectoryName(fileWriteSession.TempFile));
                             _fileWriteSessions.Add(fileWriteSession);
@@ -724,22 +740,25 @@ namespace CFFileSystemConnection.Common
                         
                         // If all sections received then copy temp file to destination                        
                         if (!writeFileRequest.IsMore)
-                        {
-                            // Check that the temp file is the correct size before we move it
-                            var fileInfo = new FileInfo(fileWriteSession.TempFile);
-                            if (fileInfo.Length == writeFileRequest.FileObject.Length)
+                        {                            
+                            if (!isWriteDirectToDest)
                             {
-                                // Move file
-                                File.Move(fileWriteSession.TempFile, writeFileRequest.FileObject.Path);
-                            }
-                            else
-                            {                                
-                                writeFileResponse.Response.ErrorCode = ResponseErrorCodes.FileSystemError;
-                                writeFileResponse.Response.ErrorMessage = "Received file size is different to expected";
-                            }
+                                // Check that the temp file is the correct size before we move it
+                                var fileInfo = new FileInfo(fileWriteSession.TempFile);
+                                if (fileInfo.Length == writeFileRequest.FileObject.Length)
+                                {
+                                    // Move file
+                                    File.Move(fileWriteSession.TempFile, writeFileRequest.FileObject.Path);
+                                }
+                                else
+                                {
+                                    writeFileResponse.Response.ErrorCode = ResponseErrorCodes.FileSystemError;
+                                    writeFileResponse.Response.ErrorMessage = "Received file size is different to expected";
+                                }
 
-                            // Clean up
-                            File.Delete(fileWriteSession.TempFile);
+                                // Clean up
+                                File.Delete(fileWriteSession.TempFile);
+                            }
                             _fileWriteSessions.Remove(fileWriteSession);
                         }
                     }
@@ -1003,7 +1022,7 @@ namespace CFFileSystemConnection.Common
                 var moveResponse = new MoveResponse()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    TypeId = MessageTypeIds.DeleteResponse,
+                    TypeId = MessageTypeIds.MoveResponse,
                     Response = new MessageResponse()
                     {
                         MessageId = moveRequest.Id,
@@ -1139,7 +1158,7 @@ namespace CFFileSystemConnection.Common
                 var createFolderResponse = new CreateFolderResponse()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    TypeId = MessageTypeIds.DeleteResponse,
+                    TypeId = MessageTypeIds.CreateFolderResponse,                    
                     Response = new MessageResponse()
                     {
                         MessageId = createFolderRequest.Id,

@@ -15,6 +15,8 @@ namespace CFFileSystemConnection.Models
 
         public string SecurityKey { get; set; } = String.Empty;
 
-        public EndpointInfo RemoteEndpoint { get; set; } = new EndpointInfo();        
+        public EndpointInfo RemoteEndpoint { get; set; } = new EndpointInfo();
+
+        public string PathDelimiter { get; set; } = String.Empty;
     }
 }

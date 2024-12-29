@@ -52,7 +52,8 @@ The CFFileSystemHandler application can be used for providing the remote file sy
 CFFileSystemMobile (.NET Maui)
 ------------------------------
 A .NET Maui application that allows the file system to be managed remotely without having to connect the 
-phone to a computer via USB cable.
+phone to a computer via USB cable. It is also possible to configure the list of users, security key and
+associated permissions.
 
 The application hosts an instance of the FileSystemRequestHandler class.
 
@@ -63,7 +64,15 @@ user. Users are managed via the IUserService interface.
 
 For each user then it's possible to set the following settings:
 1) Which roles that the user has.
-2) Which folder paths that the user has access to. If not set then the user can access all paths.
+2) Which folder paths that the user has access to.
 
 It is strongly recommended that security is as strict as possible to limit which paths that the user can
 access and whether they can read/write to the file system.
+
+How To Remotely Manage Files On a Phone
+---------------------------------------
+1) Install CFFileSystemMobile on the phone. Currently only Android.
+2) Run CFFileSystemMobile and configure a user in User Settings.
+3) Note down the IP address for the phone and the security key created in User Settings.
+4) Click on the Start Listening button.
+4) Run CFFileSystemManager and configure the IP, port & security key for the phone.

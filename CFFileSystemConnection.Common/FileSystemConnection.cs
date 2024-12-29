@@ -8,6 +8,7 @@ using CFFileSystemConnection.Interfaces;
 using CFFileSystemConnection.MessageConverters;
 using CFFileSystemConnection.Models;
 using System.Diagnostics;
+using System.Text;
 
 namespace CFFileSystemConnection.Common
 {
@@ -19,6 +20,8 @@ namespace CFFileSystemConnection.Common
         private ConnectionTcp _connection;
         private TimeSpan _responseTimeout = TimeSpan.FromSeconds(30);
         private EndpointInfo? _remoteEndpointInfo;
+
+        private Char? _pathDelimiter;
 
         private readonly string _securityKey;
 
@@ -52,8 +55,9 @@ namespace CFFileSystemConnection.Common
         /// </summary>
         private List<MessageBase> _responseMessages = new List<MessageBase>();
 
-        public FileSystemConnection(string securityKey)
+        public FileSystemConnection(Char? pathDelimiter,  string securityKey)
         {
+            _pathDelimiter = pathDelimiter;
             _securityKey = securityKey;
 
             _connection = new ConnectionTcp();            
@@ -105,6 +109,10 @@ namespace CFFileSystemConnection.Common
         {
             switch(connectionMessage.TypeId)
             {
+                case MessageTypeIds.CreateFolderResponse:
+                    var createFolderResponse = _createFolderResponseConverter.GetExternalMessage(connectionMessage);
+                    _responseMessages.Add(createFolderResponse);
+                    break;
                 case MessageTypeIds.DeleteResponse:
                     var deleteResponse = _deleteResponseConverter.GetExternalMessage(connectionMessage);
                     _responseMessages.Add(deleteResponse);
@@ -124,6 +132,10 @@ namespace CFFileSystemConnection.Common
                 case MessageTypeIds.GetFolderResponse:
                     var getFolderResponse = _getFolderResponseConverter.GetExternalMessage(connectionMessage);                    
                     _responseMessages.Add(getFolderResponse);
+                    break;
+                case MessageTypeIds.MoveResponse:
+                    var moveResponse = _moveResponseConverter.GetExternalMessage(connectionMessage);
+                    _responseMessages.Add(moveResponse);
                     break;
                 case MessageTypeIds.WriteFileResponse:
                     var writeFileResponse = _writeFileResponseConverter.GetExternalMessage(connectionMessage);
@@ -215,6 +227,11 @@ namespace CFFileSystemConnection.Common
                 var getFolderResponse = (GetFolderResponse)responseMessages.First();    // Only one response expected
                 if (getFolderResponse.Response.ErrorCode != null)
                 {
+                    if (getFolderResponse.Response.ErrorCode == Enums.ResponseErrorCodes.DirectoryDoesNotExist)
+                    {
+                        return null;
+                    }
+
                     throw new FileSystemConnectionException($"Error getting folder: {getFolderResponse.Response.ErrorMessage}")
                                 { ResponseErrorCode = getFolderResponse.Response.ErrorCode };
                 }                
@@ -262,6 +279,11 @@ namespace CFFileSystemConnection.Common
                 var getFileResponse = (GetFileResponse)responseMessages.First();
                 if (getFileResponse.Response.ErrorCode != null)
                 {
+                    if (getFileResponse.Response.ErrorCode == Enums.ResponseErrorCodes.FileDoesNotExist)
+                    {
+                        return null;
+                    }
+
                     throw new FileSystemConnectionException($"Error getting file: {getFileResponse.Response.ErrorMessage}")
                     { ResponseErrorCode = getFileResponse.Response.ErrorCode };
                 }
@@ -672,6 +694,23 @@ namespace CFFileSystemConnection.Common
             {
                 throw new FileSystemConnectionException($"Error creating folder");
             }
+        }
+
+        public string PathCombine(params string[] elements)
+        {
+            if (_pathDelimiter != null &&
+                _pathDelimiter != Path.DirectorySeparatorChar)
+            {
+                var path = new StringBuilder("");
+                foreach (var element in elements)
+                {
+                    if (path.Length > 0) path.Append(_pathDelimiter);
+                    path.Append(element);
+                }
+                return path.ToString();
+            }
+
+            return Path.Combine(elements);      // Default
         }
     }
 }

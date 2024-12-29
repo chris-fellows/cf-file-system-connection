@@ -21,15 +21,24 @@ namespace CFFileSystemConnection.Common
         }
 
         public List<DriveObject> GetDrives()
-        {
+        {           
             var drives = new List<DriveObject>();
 
-            foreach (var drive in DriveInfo.GetDrives())
+            //foreach (var drive in DriveInfo.GetDrives())
+            //{                                                   
+            //    drives.Add(new DriveObject()
+            //    {
+            //        Name = drive.Name,
+            //        Path = drive.RootDirectory.FullName
+            //    });
+            //}
+            
+            foreach(var drive in Environment.GetLogicalDrives())
             {
                 drives.Add(new DriveObject()
                 {
-                    Name = drive.Name,
-                    Path = drive.RootDirectory.FullName
+                    Name = drive,
+                    Path = drive
                 });
             }
 
@@ -82,10 +91,13 @@ namespace CFFileSystemConnection.Common
                     foreach (var subFolder in Directory.GetDirectories(path))
                     {
                         try
-                        {
-                            if (folderObject.Folders == null) folderObject.Folders = new();
-                            var subFolderObject = GetFolder(subFolder, getFiles, recurseSubFolders);                            
-                            folderObject.Folders.Add(subFolderObject);
+                        {                            
+                            var subFolderObject = GetFolder(subFolder, getFiles, recurseSubFolders);
+                            if (subFolderObject != null)
+                            {
+                                if (folderObject.Folders == null) folderObject.Folders = new();
+                                folderObject.Folders.Add(subFolderObject);
+                            }
                         }
                         catch(Exception exception)
                         {
@@ -112,10 +124,13 @@ namespace CFFileSystemConnection.Common
                     }
                     
                     foreach (var subFolder in subFolders)
-                    {
-                        if (folderObject.Folders == null) folderObject.Folders = new();
+                    {                        
                         var subFolderObject = GetFolderObject(new DirectoryInfo(subFolder));
-                        folderObject.Folders.Add(subFolderObject);
+                        if (subFolderObject != null)
+                        {
+                            if (folderObject.Folders == null) folderObject.Folders = new();
+                            folderObject.Folders.Add(subFolderObject);
+                        }
                     }                                        
                 }
 
@@ -338,6 +353,11 @@ namespace CFFileSystemConnection.Common
             }
 
             Directory.Move(oldPath, newPath);
+        }
+
+        public string PathCombine(params string[] elements)
+        {
+            return Path.Combine(elements);
         }
     }
 }

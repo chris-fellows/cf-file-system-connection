@@ -74,29 +74,67 @@ namespace CFFileSystemManager.Utilities
             }
         }
 
-        //public static void CopyFolderBetween(IFileSystem fileSystemSrc,
-        //                                    string folderSrc,
-        //                                    IFileSystem fileSystemDst,
-        //                                    string folderDst,
-        //                                    int fileSectionBytes,
-        //                                    Action<string> statusAction)
-        //{
-        //    statusAction($"Copying {folderSrc}");
+        /// <summary>
+        /// Copies folder between file systems
+        /// </summary>
+        /// <param name="fileSystemSrc"></param>
+        /// <param name="folderSrc"></param>
+        /// <param name="fileSystemDst"></param>
+        /// <param name="folderDst"></param>
+        /// <param name="fileSectionBytes"></param>
+        /// <param name="statusAction"></param>
+        public static void CopyFolderBetween(IFileSystem fileSystemSrc,
+                                            string folderSrc,
+                                            IFileSystem fileSystemDst,
+                                            string folderDst,
+                                            int fileSectionBytes,
+                                            Action<string> statusAction)
+        {
+            statusAction($"Copying {folderSrc}");
 
-        //    // Get destination folder
-        //    var folderObjectDst = fileSystemDst.GetFolder(folderDst, true, false);
+            // Get source folder
+            var folderObjectSrc = fileSystemSrc.GetFolder(folderSrc, true, false);
 
-        //    if (folderObjectDst == null)  // Create folder
-        //    {
-        //        fileSystemDst.CreateFolder(folderDst);
-        //        folderObjectDst = fileSystemDst.GetFolder(folderDst, true, false);
-        //    }
+            // Get destination folder
+            var folderObjectDst = fileSystemDst.GetFolder(folderDst, true, false);
 
-        //    // Get source folder
-        //    var folderObjectSrc = fileSystemSrc.GetFolder(folderSrc, true, false);                        
+            // Create destination folder
+            if (folderObjectDst == null) 
+            {
+                fileSystemDst.CreateFolder(folderDst);
+                folderObjectDst = fileSystemDst.GetFolder(folderDst, true, false);
+            }            
 
-        //    statusAction($"Copied {folderSrc}");
-        //}
+            // Copy files
+            if (folderObjectSrc.Files != null)
+            {
+                foreach(var fileSrc in folderObjectSrc.Files)
+                {                    
+                    var fileDstPath = fileSystemDst.PathCombine(folderDst, fileSrc.Name);
+
+                    CopyFileBetween(fileSystemSrc, fileSrc.Path,
+                        fileSystemDst, fileDstPath,
+                        fileSectionBytes,
+                        statusAction);                                                            
+                }
+            }
+            
+            // Copy sub-folders
+            if (folderObjectSrc.Folders != null)
+            {
+                foreach(var subFolderSrc in folderObjectSrc.Folders)
+                {
+                    var subFolderDstPath = fileSystemDst.PathCombine(folderObjectDst.Path, subFolderSrc.Name);
+
+                    CopyFolderBetween(fileSystemSrc, subFolderSrc.Path,
+                        fileSystemDst, subFolderDstPath,
+                        fileSectionBytes,
+                        statusAction);
+                }
+            }            
+
+            statusAction($"Copied {folderSrc}");
+        }
 
         /// <summary>
         /// Copies local file to remote. We stream sections of the file in to multiple request messages
@@ -166,5 +204,28 @@ namespace CFFileSystemManager.Utilities
 
             statusAction($"Copied {fileSrc}");            
         }
+
+        ///// <summary>
+        ///// Implementation of Path.Combine that works for different platforms.
+        ///// </summary>
+        ///// <param name="delimiter"></param>
+        ///// <param name="elements"></param>
+        ///// <returns></returns>
+        //public static string PathCombine(Char delimiter,
+        //                                params string[] elements)
+        //{
+        //    if (delimiter != Path.DirectorySeparatorChar)
+        //    {
+        //        var path = new StringBuilder("");
+        //        foreach (var element in elements)
+        //        {
+        //            if (path.Length > 0) path.Append(delimiter);
+        //            path.Append(element);
+        //        }
+        //        return path.ToString();               
+        //    }
+
+        //    return Path.Combine(elements);      // Default
+        //}
     }
 }

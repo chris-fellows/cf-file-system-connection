@@ -72,10 +72,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="NewFolder\" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <Compile Update="UserSettingsPage.xaml.cs">
 	    <DependentUpon>UserSettingsPage.xaml</DependentUpon>
 	  </Compile>

@@ -84,5 +84,12 @@ namespace CFFileSystemConnection.Interfaces
         /// <param name="oldPath"></param>
         /// <param name="newPath"></param>
         void MoveFolder(string oldPath, string newPath);
+
+        /// <summary>
+        /// Returns path from combined elements
+        /// </summary>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        string PathCombine(params string[] elements);
     }
 }

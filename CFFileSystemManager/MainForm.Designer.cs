@@ -44,6 +44,9 @@
             copyToLocalToolStripMenuItem = new ToolStripMenuItem();
             testCopyFileBySectionsToolStripMenuItem = new ToolStripMenuItem();
             copyLocalFileToToolStripMenuItem = new ToolStripMenuItem();
+            pasteFoldersToolStripMenuItem = new ToolStripMenuItem();
+            pasteFilesToolStripMenuItem = new ToolStripMenuItem();
+            getMusicFoldersToolStripMenuItem = new ToolStripMenuItem();
             toolStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -142,9 +145,10 @@
             // 
             // cmsFolder
             // 
-            cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem, testCopyFileBySectionsToolStripMenuItem, copyLocalFileToToolStripMenuItem });
+            cmsFolder.Items.AddRange(new ToolStripItem[] { copyToLocalToolStripMenuItem, testCopyFileBySectionsToolStripMenuItem, copyLocalFileToToolStripMenuItem, pasteFoldersToolStripMenuItem, pasteFilesToolStripMenuItem, getMusicFoldersToolStripMenuItem });
             cmsFolder.Name = "cmsFolder";
-            cmsFolder.Size = new Size(205, 70);
+            cmsFolder.Size = new Size(205, 158);
+            cmsFolder.Opening += cmsFolder_Opening;
             // 
             // copyToLocalToolStripMenuItem
             // 
@@ -158,6 +162,7 @@
             testCopyFileBySectionsToolStripMenuItem.Name = "testCopyFileBySectionsToolStripMenuItem";
             testCopyFileBySectionsToolStripMenuItem.Size = new Size(204, 22);
             testCopyFileBySectionsToolStripMenuItem.Text = "Test copy file by sections";
+            testCopyFileBySectionsToolStripMenuItem.Visible = false;
             testCopyFileBySectionsToolStripMenuItem.Click += testCopyFileBySectionsToolStripMenuItem_Click;
             // 
             // copyLocalFileToToolStripMenuItem
@@ -166,6 +171,27 @@
             copyLocalFileToToolStripMenuItem.Size = new Size(204, 22);
             copyLocalFileToToolStripMenuItem.Text = "Copy local file to";
             copyLocalFileToToolStripMenuItem.Click += copyLocalFileToToolStripMenuItem_Click;
+            // 
+            // pasteFoldersToolStripMenuItem
+            // 
+            pasteFoldersToolStripMenuItem.Name = "pasteFoldersToolStripMenuItem";
+            pasteFoldersToolStripMenuItem.Size = new Size(204, 22);
+            pasteFoldersToolStripMenuItem.Text = "Paste folder(s)";
+            pasteFoldersToolStripMenuItem.Click += pasteFoldersToolStripMenuItem_Click;
+            // 
+            // pasteFilesToolStripMenuItem
+            // 
+            pasteFilesToolStripMenuItem.Name = "pasteFilesToolStripMenuItem";
+            pasteFilesToolStripMenuItem.Size = new Size(204, 22);
+            pasteFilesToolStripMenuItem.Text = "Paste file(s)";
+            pasteFilesToolStripMenuItem.Click += pasteFilesToolStripMenuItem_Click;
+            // 
+            // getMusicFoldersToolStripMenuItem
+            // 
+            getMusicFoldersToolStripMenuItem.Name = "getMusicFoldersToolStripMenuItem";
+            getMusicFoldersToolStripMenuItem.Size = new Size(204, 22);
+            getMusicFoldersToolStripMenuItem.Text = "Get music folders";
+            getMusicFoldersToolStripMenuItem.Click += getMusicFoldersToolStripMenuItem_Click;
             // 
             // MainForm
             // 
@@ -208,5 +234,8 @@
         private ToolStripMenuItem testCopyFileBySectionsToolStripMenuItem;
         private ToolStripMenuItem copyLocalFileToToolStripMenuItem;
         private ImageList imageList1;
+        private ToolStripMenuItem pasteFoldersToolStripMenuItem;
+        private ToolStripMenuItem pasteFilesToolStripMenuItem;
+        private ToolStripMenuItem getMusicFoldersToolStripMenuItem;
     }
 }

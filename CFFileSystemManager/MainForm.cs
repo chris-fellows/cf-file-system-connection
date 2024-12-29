@@ -7,11 +7,8 @@ using CFFileSystemConnection.Models;
 using CFFileSystemConnection.Service;
 using CFFileSystemManager.Controls;
 using CFFileSystemManager.Utilities;
-using System.CodeDom;
-using System.IO;
+using System.IO.Packaging;
 using System.Net;
-using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace CFFileSystemManager
 {
@@ -19,6 +16,11 @@ namespace CFFileSystemManager
     {
         private readonly IConnectionSettingsService _connectionSettingsService;
         private IFileSystem _fileSystemRemote;
+
+        /// <summary>
+        /// Local file system. We go via this interface so that we can have code than can use either a local or remote file
+        /// system.
+        /// </summary>
         private IFileSystem _fileSystemLocal = new FileSystemLocal();
 
         private const int _folderIconIndex = 0;
@@ -32,7 +34,7 @@ namespace CFFileSystemManager
 
         public MainForm()
         {
-            InitializeComponent();      
+            InitializeComponent();
 
             _connectionSettingsService = new JsonConnectionSettingsService(Path.Combine(Environment.CurrentDirectory, "Data"));
         }
@@ -45,12 +47,14 @@ namespace CFFileSystemManager
         {
             DisplayStatus($"Initialising connection for {connectionSettings.Name}");
 
+            // Clean up connection
             if (_fileSystemRemote != null)
             {
                 _fileSystemRemote.Close();
             }
 
-            var fileSystemConnection = new FileSystemConnection(connectionSettings.SecurityKey)
+            var fileSystemConnection = new FileSystemConnection(String.IsNullOrEmpty(connectionSettings.PathDelimiter) ? null : connectionSettings.PathDelimiter[0],
+                                                            connectionSettings.SecurityKey)
             {
                 RemoteEndpoint = new EndpointInfo()
                 {
@@ -156,14 +160,21 @@ namespace CFFileSystemManager
             var rootNode = tvwFolder.Nodes.Add("/", "/", _folderIconIndex);
             rootNode.Tag = folder;
 
-            // Add sub-folders
-            if (folder.Folders != null)
+            if (folder == null)
             {
-                folder.Folders.ForEach(subFolder => AddFolderToTree(rootNode, subFolder));
+                MessageBox.Show("No folders were returned", "Warning");
             }
+            else
+            {
+                // Add sub-folders
+                if (folder.Folders != null)
+                {
+                    folder.Folders.OrderBy(f => f.Name).ToList().ForEach(subFolder => AddFolderToTree(rootNode, subFolder));
+                }
 
-            // Expand top level sub-folders of root
-            rootNode.Expand();
+                // Expand top level sub-folders of root
+                rootNode.Expand();
+            }
 
             DisplayStatus("Ready");
         }
@@ -401,18 +412,18 @@ namespace CFFileSystemManager
 
             // Get files dropped
             var filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop);
-           
+
             // Check that only files dropped
             // TODO: Support folder copy            
             if (filesDropped.Any(file => !File.Exists(file)))
-            {                         
+            {
                 MessageBox.Show("Only files can be dropped", "Error");
-                return;                
+                return;
             }
-            
+
             if (MessageBox.Show($"Do you want to copy the selected file(s) to {folderObject.Path}?", "Copy Files", MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                foreach(var file in filesDropped)
+                foreach (var file in filesDropped)
                 {
                     if (File.Exists(file))      // Check that it's not a folder
                     {
@@ -423,8 +434,157 @@ namespace CFFileSystemManager
                     }
                 }
 
-                MessageBox.Show("File(s) copied", "Copy Files");                
-            }          
+                MessageBox.Show("File(s) copied", "Copy Files");
+            }
+        }
+
+        private void cmsFolder_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Set state of paste folders/files
+            pasteFilesToolStripMenuItem.Visible = false;
+            pasteFoldersToolStripMenuItem.Visible = false;
+
+            if (Clipboard.ContainsFileDropList())
+            {
+                var items = Clipboard.GetFileDropList();
+                foreach (var item in items)
+                {
+                    if (Directory.Exists(item))
+                    {
+                        pasteFoldersToolStripMenuItem.Visible = true;
+                    }
+                    else if (File.Exists(item))
+                    {
+                        pasteFilesToolStripMenuItem.Visible = true;
+                    }
+                }
+            }
+
+            int ccc = 1000;
+        }
+
+        private void pasteFoldersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // Get folder to copy to
+            FolderObject folderObjectDst = (FolderObject)tvwFolder.SelectedNode.Tag;
+
+            if (Clipboard.ContainsFileDropList())
+            {
+                // Get folders to copy
+                var items = Clipboard.GetFileDropList();
+                var folders = new List<string>();
+                foreach (var item in items)
+                {
+                    if (Directory.Exists(item))
+                    {
+                        folders.Add(item);
+                    }
+                }
+                folders.Sort();
+
+                // Copy folders
+                if (folders.Any())
+                {
+                    if (MessageBox.Show($"Copy folders to {folderObjectDst.Path}?", "Copy Folder(s)", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    {
+                        foreach (var folderSrc in folders)
+                        {
+                            var folderName = new DirectoryInfo(folderSrc).Name;
+
+                            var folderDst = _fileSystemRemote.PathCombine(folderObjectDst.Path, folderName);
+
+                            FileSystemUtilities.CopyFolderBetween(_fileSystemLocal, folderSrc,
+                                            _fileSystemRemote, folderDst,
+                                            _fileSectionBytes,
+                                              (status) => DisplayStatus(status));
+                        }
+                    }
+                }
+            }
+
+        }
+
+        private void getMusicFoldersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var drives = _fileSystemRemote.GetDrives();
+
+            var drivesFound = new List<DriveObject>();
+
+            foreach (var drive in drives)
+            {
+                try
+                {
+                    var folder = _fileSystemRemote.GetFolder(drive.Path, false, true);
+                    if (folder != null)
+                    {
+                        if (IsFolderToFind(folder))
+                        {
+                            drivesFound.Add(drive);
+                        }
+                    }
+                }
+                catch (Exception exception)
+                {
+
+                }
+            }
+
+            int xxx = 1000;
+        }
+
+        private static bool IsFolderToFind(FolderObject folderObject)
+        {
+            if (Array.IndexOf(new[] { "music", "dcim", "podcasts" }, folderObject.Name.ToLower()) != -1) return true;
+
+            if (folderObject.Folders != null)
+            {
+                foreach (var subFolderObject in folderObject.Folders.Where(sf => sf != null))
+                {
+                    if (IsFolderToFind(subFolderObject)) return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void pasteFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // Get folder to copy to
+            FolderObject folderObjectDst = (FolderObject)tvwFolder.SelectedNode.Tag;
+
+            if (Clipboard.ContainsFileDropList())
+            {
+                // Get files to copy
+                var items = Clipboard.GetFileDropList();
+                var files = new List<string>();
+                foreach (var item in items)
+                {
+                    if (File.Exists(item))
+                    {
+                        files.Add(item);
+                    }
+                }
+                files.Sort();
+
+                // Copy files
+                if (files.Any())
+                {
+                    if (MessageBox.Show($"Copy files to {folderObjectDst.Path}?", "Copy Files(s)", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    {
+                        foreach (var fileSrc in files)
+                        {
+                            var fileObjectSrc = _fileSystemLocal.GetFile(fileSrc);
+
+                            var fileDst = _fileSystemRemote.PathCombine(folderObjectDst.Path, fileObjectSrc.Name);
+
+                            FileSystemUtilities.CopyFileBetween(_fileSystemLocal, fileSrc,
+                                            _fileSystemRemote, fileDst,
+                                            _fileSectionBytes,
+                                              (status) => DisplayStatus(status));
+                        }
+                    }
+                }
+            }
         }
     }
 }
